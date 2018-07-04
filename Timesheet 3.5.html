@@ -16,8 +16,8 @@
         tr:last-child > th {
             font-weight: bold;
         }
-
-        tr.active, tr.info {
+        /* tr.active,*/
+        tr.info {
             cursor: pointer
         }
 
@@ -323,16 +323,17 @@
                     return d.addDays(7 - day);
                 },
 
-                createView: function(records, split, merge, splitMeetings) {
+                // createView: function(records, split, merge, splitMeetings) {
+                createView: function(records, splitMeetings) {
                     this._lastRecords = records;
-                    this.log('Creating view...', split);
-                    if (merge) {
-                        records = records.map(function(r) {
-                            return this.teamMergeMap[r.team]
-                                       ? $.extend({}, r, { team: this.teamMergeMap[r.team] })
-                                       : r;
-                        }, this);
-                    }
+                    //this.log('Creating view...', split);
+                    // if (merge) {
+                        // records = records.map(function(r) {
+                        //     return this.teamMergeMap[r.team]
+                        //                ? $.extend({}, r, { team: this.teamMergeMap[r.team] })
+                        //                : r;
+                        // }, this);
+                    //} 
                     $('output').remove();
                     $('.app').show();
                     $('.output').empty();
@@ -385,7 +386,7 @@
                         storeByDate[r.ShortDate][feat].push(r.Hours);
                         storeByDate[r.ShortDate][feat + r.team].push(r.Hours);
                     });
-
+                                   
                     var shift = 0,
                         table,
                         tr,
@@ -399,7 +400,7 @@
                         sumHours,
                         project;
 
-                    if (split) {
+                    // if (split) {
                         while (shift < dates.length) {
                             table = $('<table>', { 'class': 'table  table-hover' });
                             tr = $('<tr class="info">');
@@ -424,11 +425,11 @@
                                     return false;
                                 });
 
-                                if (weekFeatures.length) {
+                               /* if (weekFeatures.length) {
                                     tr = $('<tr>', { 'class': 'active' });
                                     tr.append('<th><b>Planet:</b> ' + project + '</th><th colspan="7"></th>');
                                     tbody.append(tr);
-                                }
+                                } */
 
                                 for (j = 0; j < weekFeatures.length; j++) {
                                     feature = weekFeatures[j];
@@ -480,8 +481,8 @@
                             shift += 7;
                             $('.output').append(table).append('<br />');
                         }
-                        return;
-                    }
+                        //return;
+                    //}
 
                     while (shift < dates.length) {
                         table = $('<table>', { 'class': 'table  table-hover' });
@@ -567,7 +568,8 @@
                     });
                 },
 
-                fetchAllProjectsAndCreateView: function (user, date, projects, results, split, merge, splitMeetings) {
+                // fetchAllProjectsAndCreateView: function (user, date, projects, results, split, merge, splitMeetings) {
+                fetchAllProjectsAndCreateView: function (user, date, projects, results, splitMeetings) {
                     if (!projects.length) {
                         return null;
                     }
@@ -585,7 +587,8 @@
                         });
                         return d.promise();
                     }, this)).then(function() {
-                        self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, split, merge, splitMeetings);
+                        // self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, split, merge, splitMeetings);
+                        self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, splitMeetings);
                     });
                 },
 
@@ -643,9 +646,9 @@
 
                 run: function(user) {
                     var self = this,
-                        split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
+                        splitMeetings = $('.splitMeetings').prop('checked');
+                        // split = $('.split').prop('checked'),
+                        // merge = $('.merge').prop('checked');
 
                     this.useComma = $('.comma').prop('checked');
                     this.dateStr = $('.date').val();
@@ -654,7 +657,8 @@
                         var loadAll = function (projects) {
                             if (projects.length) {
                                 $('.app').hide();
-                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], split, merge, splitMeetings);
+                                //self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], split, merge, splitMeetings);
+                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], splitMeetings);
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
@@ -688,8 +692,10 @@
                     this.dateStr = $('.date').val();
 
                     $('.app').hide();
-                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, split, merge, splitMeetings) {
-                        this.createView(this.pullOutloookAppointments(records), split, merge, splitMeetings);
+
+                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, splitMeetings) {
+                        this.createView(this.pullOutloookAppointments(records),splitMeetings); /*this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, split, merge, splitMeetings) {
+                        this.createView(this.pullOutloookAppointments(records), split, merge, splitMeetings);*/
                     }.bind(this));
                 },
 
@@ -700,7 +706,8 @@
                             autoLoad: true,
                             listeners: {
                                 load: function (x, users) {
-                                    var $select = $('select'), currentUserName = Rally.environment.getContext().getUser().UserName;
+                                    var $select = $('select'), 
+                                        currentUserName = Rally.environment.getContext().getUser().UserName;
                                     users.sort(function (u, u2) {
                                         return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
                                     }).forEach(function (u) {
@@ -726,10 +733,10 @@
                     });
                 },
 
-                teamMergeMap: {
+               /* teamMergeMap: {
                     'Purple Team': 'Cadia',
                     'Yellow Team': 'Solaris'
-                }
+                }*/
             };
 
         $(document).ready(function () {
@@ -797,24 +804,27 @@
                     app.run($('select').val() || Rally.environment.getContext().getUser().UserName);
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
-                    var split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
+                    var splitMeetings = $('.splitMeetings').prop('checked');
+                          // split = $('.split').prop('checked'),
+                          // merge = $('.merge').prop('checked');
+                          
                     app.useComma = $('.comma').prop('checked');
-                    app.createView(app._lastRecords, split, merge, splitMeetings);
+                   
+                    app.createView(app._lastRecords, splitMeetings); // app.createView(app._lastRecords, split, merge, splitMeetings);
                 }, 200))
                 .on('click', 'thead tr.info', function() {
                     var $tbody = $(this).closest('table').find('tbody');
                     setSelectionRange($tbody.get(0), 0, $tbody.find('tr:not(:last)').text().length);
                 })
-                .on('click', 'tbody tr.active', function() {
+                /* .on('click', 'tbody tr.active', function() {
                     var $this = $(this),
                         $tbody = $this.closest('table').find('tbody'),
                         nextPlanet = $this.nextAll().filter('.active');
                     setSelectionRange($tbody.get(0), $this.prevAll().addBack().text().length, nextPlanet.length
                                                                                                   ? nextPlanet.first().prevAll().text().length
                                                                                                   : $tbody.find('tr:not(:last)').text().length);
-                })
+                
+                }) */
 				.on('change', 'select', function() {
                     app.run($(this).val());
                 });
@@ -844,12 +854,13 @@
                 <option value="0" disabled="disabled" selected="selected" style="display: none;">Please select team member...</option>
             </select>
             &nbsp;&nbsp;
-            <label class="checkbox-inline">
+           <!--<label class="checkbox-inline">
                 <input type="checkbox" class="split" value="true" />Split by Planet
-            </label>
+            </label> 
             <label class="checkbox-inline" title="Yellow Team => Solaris, Purple Team => Cadia">
                 <input type="checkbox" class="merge" value="true" checked="checked"/>Merge old teams
-            </label>
+            </label> -->
+            
 			<label class="checkbox-inline">
                 <input type="checkbox" class="splitMeetings" value="true"/>Split Meetings
             </label>
