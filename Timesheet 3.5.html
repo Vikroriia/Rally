@@ -324,7 +324,7 @@
                 },
 
                 // createView: function(records, split, merge, splitMeetings) {
-                createView: function(records, splitMeetings) {
+                createView: function(records, activeUsersOnly, splitMeetings) {
                     this._lastRecords = records;
                     //this.log('Creating view...', split);
                     // if (merge) {
@@ -569,7 +569,7 @@
                 },
 
                 // fetchAllProjectsAndCreateView: function (user, date, projects, results, split, merge, splitMeetings) {
-                fetchAllProjectsAndCreateView: function (user, date, projects, results, splitMeetings) {
+                fetchAllProjectsAndCreateView: function (user, date, projects, results, activeUsersOnly, splitMeetings) {
                     if (!projects.length) {
                         return null;
                     }
@@ -588,7 +588,7 @@
                         return d.promise();
                     }, this)).then(function() {
                         // self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, split, merge, splitMeetings);
-                        self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, splitMeetings);
+                        self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, activeUsersOnly, splitMeetings);
                     });
                 },
 
@@ -646,6 +646,7 @@
 
                 run: function(user) {
                     var self = this,
+                        activeUsersOnly = $('.activeUsersOnly').prop('checked'),
                         splitMeetings = $('.splitMeetings').prop('checked');
                         // split = $('.split').prop('checked'),
                         // merge = $('.merge').prop('checked');
@@ -658,7 +659,7 @@
                             if (projects.length) {
                                 $('.app').hide();
                                 //self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], split, merge, splitMeetings);
-                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], splitMeetings);
+                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], activeUsersOnly ,splitMeetings);
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
@@ -691,10 +692,10 @@
                 runSingle: function () {
                     this.dateStr = $('.date').val();
 
-                    $('.app').hide();
-
-                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, splitMeetings) {
-                        this.createView(this.pullOutloookAppointments(records),splitMeetings); /*this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, split, merge, splitMeetings) {
+                    $('.app').hide();                        
+                    
+                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, activeUsersOnly, splitMeetings) {
+                        this.createView(this.pullOutloookAppointments(records), activeUsersOnly, splitMeetings); /*this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, split, merge, splitMeetings) {
                         this.createView(this.pullOutloookAppointments(records), split, merge, splitMeetings);*/
                     }.bind(this));
                 },
@@ -716,6 +717,7 @@
                                             $select.find('option[selected]').removeAttr('selected');
                                             $option.attr('selected', 'selected');
                                         }
+
                                         $select.append($option);
                                     });
 
@@ -804,13 +806,14 @@
                     app.run($('select').val() || Rally.environment.getContext().getUser().UserName);
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
-                    var splitMeetings = $('.splitMeetings').prop('checked');
+                    var activeUsersOnly = $('.activeUsersOnly').prop('cheched'),
+                        splitMeetings = $('.splitMeetings').prop('checked');
                           // split = $('.split').prop('checked'),
                           // merge = $('.merge').prop('checked');
                           
                     app.useComma = $('.comma').prop('checked');
                    
-                    app.createView(app._lastRecords, splitMeetings); // app.createView(app._lastRecords, split, merge, splitMeetings);
+                    app.createView(app._lastRecords, activeUsersOnly, splitMeetings); // app.createView(app._lastRecords, split, merge, splitMeetings);
                 }, 200))
                 .on('click', 'thead tr.info', function() {
                     var $tbody = $(this).closest('table').find('tbody');
@@ -860,7 +863,11 @@
             <label class="checkbox-inline" title="Yellow Team => Solaris, Purple Team => Cadia">
                 <input type="checkbox" class="merge" value="true" checked="checked"/>Merge old teams
             </label> -->
-            
+            <!---->
+            <label class="checkbox-inline">
+                <input type="checkbox" class="activeUsersOnly" value="true" checked="checked"/>Active users only
+            </label>
+            <!---->
 			<label class="checkbox-inline">
                 <input type="checkbox" class="splitMeetings" value="true"/>Split Meetings
             </label>
