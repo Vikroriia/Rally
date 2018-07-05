@@ -570,6 +570,8 @@
                         return d.promise();
                     }, this)).then(function() {
                         self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, activeUsersOnly, splitMeetings);
+                        //-------
+                        
                     });
                 },
 
