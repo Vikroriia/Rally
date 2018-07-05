@@ -403,81 +403,6 @@
                         sumHours,
                         project;
 
-                    /* while (shift < dates.length) {
-                        table = $('<table>', { 'class': 'table  table-hover' });
-                        tr = $('<tr class="info">');
-                        tr.append('<th>Feature / User story</th>');
-
-                        for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                            tr.append('<th>' + dates[i] + '</th>');
-                        }
-
-                        table.append($('<thead>').html(tr));
-                        table.append(tbody = $('<tbody>'));
-
-                        for (var p = 0; p < projects.length; p++) {
-                            project = projects[p];
-
-                            weekFeatures = features.filter(function(f) {
-                                for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                    if (storeByDate[dates[i]] && storeByDate[dates[i]][f + project]) {
-                                        return true;
-                                    }
-                                }
-                                return false;
-                            });
-
-                            for (j = 0; j < weekFeatures.length; j++) {
-                                feature = weekFeatures[j];
-                                tr = $('<tr>');
-                                tr.append('<th>' + feature + '</th>');
-
-                                for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                    sumHours = 0;
-                                    if (storeByDate[dates[i]]) {
-                                        hours = storeByDate[dates[i]][feature + project];
-                                        sumHours = this.sumHours(hours);
-                                    }
-                                    tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
-                                }
-                                tbody.append(tr);
-                            }
-                        }
-                        tr = $('<tr>');
-                        tr.append('<th>Total</th>');
-
-                        weekFeatures = features.filter(function(f) {
-                            for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                if (storeByDate[dates[i]] && storeByDate[dates[i]][f]) {
-                                    return true;
-                                }
-                            }
-                            return false;
-                        });
-
-                        for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                            total = 0;
-                            if (storeByDate[dates[i]]) {
-                                for (j = 0; j < weekFeatures.length; j++) {
-                                    feature = weekFeatures[j];
-                                    hours = storeByDate[dates[i]][feature];
-                                    total += this.sumHours(hours);
-                                }
-                            }
-                            tr.append($('<th>', {
-                                'class': total >= 9
-                                                ? 'danger'
-                                                : total <= 7
-                                                ? total !== 0 ? 'warning' : ''
-                                                : total <= 8.5 && total >= 7.5 ? 'success' : ''
-                            }).text(this.hoursToString(total)));
-                        }
-                        table.append(tr);
-
-                        shift += 7;
-                        $('.output').append(table).append('<br />');
-                    } */
-
                     while (shift < dates.length) {
                         table = $('<table>', { 'class': 'table  table-hover' });
                         tr = $('<tr class="info">');
@@ -709,7 +634,7 @@
                                             $select.find('option[selected]').removeAttr('selected');
                                             $option.attr('selected', 'selected');
                                         }
-                                        if (u.data.Disabled === true || u.data.Deleted === true) { // if (!(u.data.Disabled === false && u.data.Deleted === false)) {
+                                        if (u.data.Disabled === true || u.data.Deleted === true) { 
                                             $noactive = $option.addClass('noActive');
                                         }
                                         $select.append($option);
