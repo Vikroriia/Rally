@@ -16,7 +16,7 @@
         tr:last-child > th {
             font-weight: bold;
         }
-        /* tr.active,*/
+        
         tr.info {
             cursor: pointer
         }
@@ -39,6 +39,11 @@
             position: absolute;
             top: 0;
             left: 0;
+        }
+
+        .noActive {
+            color: #adadad;
+            font-style: italic; 
         }
     </style>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
@@ -378,7 +383,13 @@
                         storeByDate[r.ShortDate][feat].push(r.Hours);
                         storeByDate[r.ShortDate][feat + r.team].push(r.Hours);
                     });
-                                   
+                    //-------------------------------------
+                     if (!activeUsersOnly) {
+                        
+                     } else {
+                        
+                     }
+                    
                     var shift = 0,
                         table,
                         tr,
@@ -392,82 +403,82 @@
                         sumHours,
                         project;
 
-                        while (shift < dates.length) {
-                            table = $('<table>', { 'class': 'table  table-hover' });
-                            tr = $('<tr class="info">');
-                            tr.append('<th>Feature / User story</th>');
+                    while (shift < dates.length) {
+                        table = $('<table>', { 'class': 'table  table-hover' });
+                        tr = $('<tr class="info">');
+                        tr.append('<th>Feature / User story</th>');
 
-                            for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                tr.append('<th>' + dates[i] + '</th>');
-                            }
+                        for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                            tr.append('<th>' + dates[i] + '</th>');
+                        }
 
-                            table.append($('<thead>').html(tr));
-                            table.append(tbody = $('<tbody>'));
+                        table.append($('<thead>').html(tr));
+                        table.append(tbody = $('<tbody>'));
 
-                            for (var p = 0; p < projects.length; p++) {
-                                project = projects[p];
-
-                                weekFeatures = features.filter(function(f) {
-                                    for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                        if (storeByDate[dates[i]] && storeByDate[dates[i]][f + project]) {
-                                            return true;
-                                        }
-                                    }
-                                    return false;
-                                });
-
-                                for (j = 0; j < weekFeatures.length; j++) {
-                                    feature = weekFeatures[j];
-                                    tr = $('<tr>');
-                                    tr.append('<th>' + feature + '</th>');
-
-                                    for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                        sumHours = 0;
-                                        if (storeByDate[dates[i]]) {
-                                            hours = storeByDate[dates[i]][feature + project];
-                                            sumHours = this.sumHours(hours);
-                                        }
-                                        tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
-                                    }
-                                    tbody.append(tr);
-                                }
-                            }
-                            tr = $('<tr>');
-                            tr.append('<th>Total</th>');
+                        for (var p = 0; p < projects.length; p++) {
+                            project = projects[p];
 
                             weekFeatures = features.filter(function(f) {
                                 for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                    if (storeByDate[dates[i]] && storeByDate[dates[i]][f]) {
+                                    if (storeByDate[dates[i]] && storeByDate[dates[i]][f + project]) {
                                         return true;
                                     }
                                 }
                                 return false;
                             });
 
-                            for (i = shift; i < shift + 7 && i < dates.length; i++) {
-                                total = 0;
-                                if (storeByDate[dates[i]]) {
-                                    for (j = 0; j < weekFeatures.length; j++) {
-                                        feature = weekFeatures[j];
-                                        hours = storeByDate[dates[i]][feature];
-                                        total += this.sumHours(hours);
+                            for (j = 0; j < weekFeatures.length; j++) {
+                                feature = weekFeatures[j];
+                                tr = $('<tr>');
+                                tr.append('<th>' + feature + '</th>');
+
+                                for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                                    sumHours = 0;
+                                    if (storeByDate[dates[i]]) {
+                                        hours = storeByDate[dates[i]][feature + project];
+                                        sumHours = this.sumHours(hours);
                                     }
+                                    tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
                                 }
-                                tr.append($('<th>', {
-                                    'class': total >= 9
-                                                 ? 'danger'
-                                                 : total <= 7
-                                                 ? total !== 0 ? 'warning' : ''
-                                                 : total <= 8.5 && total >= 7.5 ? 'success' : ''
-                                }).text(this.hoursToString(total)));
+                                tbody.append(tr);
                             }
-                            table.append(tr);
-
-                            shift += 7;
-                            $('.output').append(table).append('<br />');
                         }
+                        tr = $('<tr>');
+                        tr.append('<th>Total</th>');
 
-                    while (shift < dates.length) {
+                        weekFeatures = features.filter(function(f) {
+                            for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                                if (storeByDate[dates[i]] && storeByDate[dates[i]][f]) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        });
+
+                        for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                            total = 0;
+                            if (storeByDate[dates[i]]) {
+                                for (j = 0; j < weekFeatures.length; j++) {
+                                    feature = weekFeatures[j];
+                                    hours = storeByDate[dates[i]][feature];
+                                    total += this.sumHours(hours);
+                                }
+                            }
+                            tr.append($('<th>', {
+                                'class': total >= 9
+                                                ? 'danger'
+                                                : total <= 7
+                                                ? total !== 0 ? 'warning' : ''
+                                                : total <= 8.5 && total >= 7.5 ? 'success' : ''
+                            }).text(this.hoursToString(total)));
+                        }
+                        table.append(tr);
+
+                        shift += 7;
+                        $('.output').append(table).append('<br />');
+                    }
+
+                    /*   while (shift < dates.length) {
                         table = $('<table>', { 'class': 'table  table-hover' });
                         tr = $('<tr class="info">');
                         tr.append('<th>Feature / User story</th>');
@@ -527,7 +538,7 @@
 
                         shift += 7;
                         $('.output').append(table).append('<br />');
-                    }
+                    } */
                 },
 
                 useComma: true,
@@ -570,8 +581,6 @@
                         return d.promise();
                     }, this)).then(function() {
                         self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, activeUsersOnly, splitMeetings);
-                        //-------
-                        
                     });
                 },
 
@@ -687,24 +696,26 @@
                             listeners: {
                                 load: function (x, users) {
                                     var $select = $('select'), 
+                                        $noactive = $('noactive'),
                                         currentUserName = Rally.environment.getContext().getUser().UserName;
                                     users.sort(function (u, u2) {
                                         return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
                                     }).forEach(function (u) {
-                                        var $option = $('<option>', { value: u.data.UserName }).text(u.data.LastName ? u.data.LastName + ' ' + u.data.FirstName : u.data.ShortDisplayName || u.data.UserName);
+                                        var $option = $('<option>', { value: u.data.UserName }).text(u.data.LastName ? u.data.LastName + ' ' + u.data.FirstName : u.data.ShortDisplayName || u.data.UserNam);
                                         if (u.data.UserName === currentUserName) {
                                             $select.find('option[selected]').removeAttr('selected');
                                             $option.attr('selected', 'selected');
                                         }
-
+                                        if (u.data.Disabled === true || u.data.Deleted === true) { // if (!(u.data.Disabled === false && u.data.Deleted === false)) {
+                                            $noactive = $option.addClass('noActive');
+                                        }
                                         $select.append($option);
                                     });
-
                                 },
                                 scope: this
                             },
                             fetch: ['UserName', 'TeamMemberships', 'Department', 'DisplayName', 'Role', 'ShortDisplayName', 'FirstName', 'LastName', 'Disabled', 'Deleted'],
-                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' }],
+                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' }, { property: 'Disabled', operator: '=', value: false }],
                             context: {
                                 projectScopeDown: true,
                                 projectScopeUp: false
@@ -781,11 +792,9 @@
                     app.run($('select').val() || Rally.environment.getContext().getUser().UserName);
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
-                    var activeUsersOnly = $('.activeUsersOnly').prop('cheched'),
+                    var activeUsersOnly = $('.activeUsersOnly').prop('checked'),
                         splitMeetings = $('.splitMeetings').prop('checked');
-                          
                     app.useComma = $('.comma').prop('checked');
-                   
                     app.createView(app._lastRecords, activeUsersOnly, splitMeetings);
                 }, 200))
                 .on('click', 'thead tr.info', function() {
