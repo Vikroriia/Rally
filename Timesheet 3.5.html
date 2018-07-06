@@ -610,7 +610,7 @@
                     }.bind(this));
                 },
 
-				getUsers: function(clearselect) {
+				getUsers: function() {
                     Rally.onReady(function() {
                         Ext.create('Rally.data.wsapi.Store', {
                             model: 'user',
@@ -620,9 +620,7 @@
                                     var $select = $('select'),
                                         activeUsersOnly = $('.activeUsersOnly').prop('checked'),
                                         currentUserName = Rally.environment.getContext().getUser().UserName;
-                                    if (clearselect) {
-                                        $select.empty();
-                                    }
+                                    $select.empty();
                                     users.sort(function (u, u2) {
                                         return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
                                     }).forEach(function (u) {
@@ -641,6 +639,9 @@
                                         if (u.data.UserName === currentUserName) {
                                             $select.find('option[selected]').removeAttr('selected');
                                             $option.attr('selected', 'selected');
+                                            if (u.data.Disabled === true || u.data.Deleted === true) { 
+                                                $option.addClass('noActive');
+                                            }
                                         }
                                     });
                                 },
@@ -727,7 +728,7 @@
                     var activeUsersOnly = $('.activeUsersOnly').prop('checked'),
                         splitMeetings = $('.splitMeetings').prop('checked');
                     app.useComma = $('.comma').prop('checked');
-                    app.getUsers(true);
+                    app.getUsers();
                     app.createView(app._lastRecords, activeUsersOnly, splitMeetings);
                 }, 200))
                 .on('click', 'thead tr.info', function() {
@@ -748,7 +749,7 @@
                     testerActiveXObject = null;
                 }
             })();
-			app.getUsers(false);
+			app.getUsers();
 			app.run();
         });
     </script>
