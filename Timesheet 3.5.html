@@ -358,7 +358,7 @@
                         }
                         var uniq = {},
                             feat = /* r.meetings
-                                       ? splitMeetings ? */ r.Feature + ': ' + r.Task /* : r.Feature + ': ' + r.meetings.map(function(rec)  {
+                                       ? splitMeetings ? */ r.Feature  /*+ ': ' + r.Task : r.Feature + ': ' + r.meetings.map(function(rec)  {
                                                  return rec.Task;
                                              }).filter(function(subj) {
                                                  subj = subj.toLowerCase();
@@ -736,7 +736,7 @@
                     app.run($(this).val());
                 });
 
-            (function (undefined) {
+         /*    (function (undefined) {
                 var testerActiveXObject = null;
                 try {
                     testerActiveXObject = new ActiveXObject('htmlfile');
@@ -745,7 +745,7 @@
                 } finally {
                     testerActiveXObject = null;
                 }
-            })();
+            })(); */
 			app.getUsers();
 			app.run();
         });
