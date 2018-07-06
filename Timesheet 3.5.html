@@ -330,7 +330,7 @@
 
                 createView: function(records, activeUsersOnly, splitMeetings) {
                     this._lastRecords = records;
-                    
+                  
                     $('output').remove();
                     $('.app').show();
                     $('.output').empty();
@@ -408,7 +408,7 @@
 
                         table.append($('<thead>').html(tr));
                         table.append(tbody = $('<tbody>'));
-                        
+                      
                         weekFeatures = features.filter(function(f) {
                             for (i = shift; i < shift + 7 && i < dates.length; i++) {
                                 if (storeByDate[dates[i]] && storeByDate[dates[i]][f]) {
@@ -602,7 +602,6 @@
 
                 runSingle: function () {
                     this.dateStr = $('.date').val();
-
                     $('.app').hide();                        
                     
                     this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, activeUsersOnly, splitMeetings) {
@@ -657,7 +656,6 @@
                         });
                     });
                 },
-
             };
 
         $(document).ready(function () {
@@ -735,7 +733,7 @@
                     var $tbody = $(this).closest('table').find('tbody');
                     setSelectionRange($tbody.get(0), 0, $tbody.find('tr:not(:last)').text().length);
                 })
-				.on('change', 'select', function() {
+                .on('change', 'select', function() {
                     app.run($(this).val());
                 });
 
