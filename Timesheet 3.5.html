@@ -383,12 +383,6 @@
                         storeByDate[r.ShortDate][feat].push(r.Hours);
                         storeByDate[r.ShortDate][feat + r.team].push(r.Hours);
                     });
-                    //-------------------------------------
-                     if (!activeUsersOnly) {
-                        
-                     } else {
-                        
-                     }
                     
                     var shift = 0,
                         table,
@@ -566,17 +560,17 @@
 
                 run: function(user) {
                     var self = this,
-                        activeUsersOnly = $('.activeUsersOnly').prop('checked', 'checked'),
+                        activeUsersOnly = $('.activeUsersOnly').prop('checked'/* , 'checked' */),
                         splitMeetings = $('.splitMeetings').prop('checked');
 
                     this.useComma = $('.comma').prop('checked');
                     this.dateStr = $('.date').val();
-                    
+                                        
                     Rally.onReady(function () {
                         var loadAll = function (projects) {
                             if (projects.length) {
                                 $('.app').hide();
-                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], activeUsersOnly ,splitMeetings);
+                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], activeUsersOnly, splitMeetings);
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
@@ -616,34 +610,44 @@
                     }.bind(this));
                 },
 
-				getUsers: function() {
+				getUsers: function(clearselect) {
                     Rally.onReady(function() {
                         Ext.create('Rally.data.wsapi.Store', {
                             model: 'user',
                             autoLoad: true,
                             listeners: {
                                 load: function (x, users) {
-                                    var $select = $('select'), 
-                                        $noactive = $('noactive'),
+                                    var $select = $('select'),
+                                        activeUsersOnly = $('.activeUsersOnly').prop('checked'),
                                         currentUserName = Rally.environment.getContext().getUser().UserName;
+                                    if (clearselect) {
+                                        $select.empty();
+                                    }
                                     users.sort(function (u, u2) {
                                         return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
                                     }).forEach(function (u) {
-                                        var $option = $('<option>', { value: u.data.UserName }).text(u.data.LastName ? u.data.LastName + ' ' + u.data.FirstName : u.data.ShortDisplayName || u.data.UserNam);
+                                        var $option = $('<option>', { value: u.data.UserName }).text(u.data.LastName ? u.data.LastName + ' ' + u.data.FirstName : u.data.ShortDisplayName || u.data.UserNam),
+                                            $active = $('<active>');
+                                        if (u.data.Disabled === true || u.data.Deleted === true) { 
+                                            $option.addClass('noActive');
+                                        } else {
+                                            $active = $option;
+                                        }
+                                        if(activeUsersOnly) {
+                                            $select.append($active);
+                                        } else {
+                                            $select.append($option);
+                                        }
                                         if (u.data.UserName === currentUserName) {
                                             $select.find('option[selected]').removeAttr('selected');
                                             $option.attr('selected', 'selected');
                                         }
-                                        if (u.data.Disabled === true || u.data.Deleted === true) { 
-                                            $noactive = $option.addClass('noActive');
-                                        }
-                                        $select.append($option);
                                     });
                                 },
                                 scope: this
                             },
                             fetch: ['UserName', 'TeamMemberships', 'Department', 'DisplayName', 'Role', 'ShortDisplayName', 'FirstName', 'LastName', 'Disabled', 'Deleted'],
-                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' }, { property: 'Disabled', operator: '=', value: false }],
+                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' }],
                             context: {
                                 projectScopeDown: true,
                                 projectScopeUp: false
@@ -723,6 +727,7 @@
                     var activeUsersOnly = $('.activeUsersOnly').prop('checked'),
                         splitMeetings = $('.splitMeetings').prop('checked');
                     app.useComma = $('.comma').prop('checked');
+                    app.getUsers(true);
                     app.createView(app._lastRecords, activeUsersOnly, splitMeetings);
                 }, 200))
                 .on('click', 'thead tr.info', function() {
@@ -743,7 +748,7 @@
                     testerActiveXObject = null;
                 }
             })();
-			app.getUsers();
+			app.getUsers(false);
 			app.run();
         });
     </script>
