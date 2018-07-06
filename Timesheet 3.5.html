@@ -40,6 +40,11 @@
             top: 0;
             left: 0;
         }
+
+        .noActive {
+            color: #adadad;
+            font-style: italic; 
+        }
     </style>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
     <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0/sdk.js"></script>
@@ -323,8 +328,9 @@
                     return d.addDays(7 - day);
                 },
 
-                createView: function(records, splitMeetings) {
+                createView: function(records, activeUsersOnly, splitMeetings) {
                     this._lastRecords = records;
+                  
                     $('output').remove();
                     $('.app').show();
                     $('.output').empty();
@@ -377,7 +383,7 @@
                         storeByDate[r.ShortDate][feat].push(r.Hours);
                         storeByDate[r.ShortDate][feat + r.team].push(r.Hours);
                     });
-                                   
+                    
                     var shift = 0,
                         table,
                         tr,
@@ -402,7 +408,7 @@
 
                         table.append($('<thead>').html(tr));
                         table.append(tbody = $('<tbody>'));
-
+                      
                         weekFeatures = features.filter(function(f) {
                             for (i = shift; i < shift + 7 && i < dates.length; i++) {
                                 if (storeByDate[dates[i]] && storeByDate[dates[i]][f]) {
@@ -411,7 +417,7 @@
                             }
                             return false;
                         });
-
+                        
                         weekFeatures.sort();
 
                         for (j = 0; j < weekFeatures.length; j++) {
@@ -454,7 +460,7 @@
 
                         shift += 7;
                         $('.output').append(table).append('<br />');
-                    }
+                    } 
                 },
 
                 useComma: true,
@@ -478,7 +484,7 @@
                     });
                 },
 
-                fetchAllProjectsAndCreateView: function (user, date, projects, results, splitMeetings) {
+                fetchAllProjectsAndCreateView: function (user, date, projects, results, activeUsersOnly, splitMeetings) {
                     if (!projects.length) {
                         return null;
                     }
@@ -496,7 +502,7 @@
                         });
                         return d.promise();
                     }, this)).then(function() {
-                        self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, splitMeetings);
+                        self.createView(user === Rally.environment.getContext().getUser().UserName ? self.pullOutloookAppointments(results) : results, activeUsersOnly, splitMeetings);
                     });
                 },
 
@@ -554,16 +560,17 @@
 
                 run: function(user) {
                     var self = this,
+                        activeUsersOnly = $('.activeUsersOnly').prop('checked', 'checked'),
                         splitMeetings = $('.splitMeetings').prop('checked');
 
                     this.useComma = $('.comma').prop('checked');
                     this.dateStr = $('.date').val();
-                    
+                                        
                     Rally.onReady(function () {
                         var loadAll = function (projects) {
                             if (projects.length) {
                                 $('.app').hide();
-                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], splitMeetings);
+                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], activeUsersOnly, splitMeetings);
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
@@ -595,11 +602,10 @@
 
                 runSingle: function () {
                     this.dateStr = $('.date').val();
-
-                    $('.app').hide();
-
-                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, splitMeetings) {
-                        this.createView(this.pullOutloookAppointments(records),splitMeetings); 
+                    $('.app').hide();                        
+                    
+                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, activeUsersOnly, splitMeetings) {
+                        this.createView(this.pullOutloookAppointments(records), activeUsersOnly, splitMeetings); 
                     }.bind(this));
                 },
 
@@ -610,19 +616,33 @@
                             autoLoad: true,
                             listeners: {
                                 load: function (x, users) {
-                                    var $select = $('select'), 
+                                    var $select = $('select'),
+                                        activeUsersOnly = $('.activeUsersOnly').prop('checked'),
                                         currentUserName = Rally.environment.getContext().getUser().UserName;
+                                    $select.empty();
                                     users.sort(function (u, u2) {
                                         return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
                                     }).forEach(function (u) {
-                                        var $option = $('<option>', { value: u.data.UserName }).text(u.data.LastName ? u.data.LastName + ' ' + u.data.FirstName : u.data.ShortDisplayName || u.data.UserName);
+                                        var $option = $('<option>', { value: u.data.UserName }).text(u.data.LastName ? u.data.LastName + ' ' + u.data.FirstName : u.data.ShortDisplayName || u.data.UserNam),
+                                            $active = $('<active>');
+                                        if (u.data.Disabled === true || u.data.Deleted === true) { 
+                                            $option.addClass('noActive');
+                                        } else {
+                                            $active = $option;
+                                        }
+                                        if(activeUsersOnly) {
+                                            $select.append($active);
+                                        } else {
+                                            $select.append($option);
+                                        }
                                         if (u.data.UserName === currentUserName) {
                                             $select.find('option[selected]').removeAttr('selected');
                                             $option.attr('selected', 'selected');
+                                            if (u.data.Disabled === true || u.data.Deleted === true) { 
+                                                $option.addClass('noActive');
+                                            }
                                         }
-                                        $select.append($option);
                                     });
-
                                 },
                                 scope: this
                             },
@@ -703,17 +723,17 @@
                     app.run($('select').val() || Rally.environment.getContext().getUser().UserName);
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
-                    var splitMeetings = $('.splitMeetings').prop('checked');
-                          
+                    var activeUsersOnly = $('.activeUsersOnly').prop('checked'),
+                        splitMeetings = $('.splitMeetings').prop('checked');
                     app.useComma = $('.comma').prop('checked');
-                   
-                    app.createView(app._lastRecords, splitMeetings); // app.createView(app._lastRecords, split, merge, splitMeetings);
+                    app.getUsers();
+                    app.createView(app._lastRecords, activeUsersOnly, splitMeetings);
                 }, 200))
                 .on('click', 'thead tr.info', function() {
                     var $tbody = $(this).closest('table').find('tbody');
                     setSelectionRange($tbody.get(0), 0, $tbody.find('tr:not(:last)').text().length);
                 })
-               	.on('change', 'select', function() {
+                .on('change', 'select', function() {
                     app.run($(this).val());
                 });
 
@@ -742,6 +762,9 @@
                 <option value="0" disabled="disabled" selected="selected" style="display: none;">Please select team member...</option>
             </select>
             &nbsp;&nbsp;
+            <label class="checkbox-inline">
+                <input type="checkbox" class="activeUsersOnly" value="true" checked="checked"/>Active users only
+            </label>
 			<label class="checkbox-inline">
                 <input type="checkbox" class="splitMeetings" value="true"/>Split Meetings
             </label>
