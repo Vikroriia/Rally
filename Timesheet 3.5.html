@@ -449,11 +449,10 @@
                                 }
                             }
                             tr.append($('<th>', {
-                                'class': total >= 9
-                                             ? 'danger'
-                                             : total <= 7
-                                             ? total !== 0 ? 'warning' : ''
-                                             : total <= 8.5 && total >= 7.5 ? 'success' : ''
+                                'class': total >= 9 
+                                                ? 'danger' : total <= 7 
+                                                                    ? total !== 0 
+                                                                              ? 'success' : '' : 'warning'
                             }).text(this.hoursToString(total)));
                         }
                         table.append(tr);
