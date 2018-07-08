@@ -560,7 +560,7 @@
                 
                 run: function(user) {
                     var self = this,
-                        activeUsersOnly = $('.activeUsersOnly').prop('checked', 'checked')/* ,
+                        activeUsersOnly = $('.activeUsersOnly').prop('checked'/* , 'checked' */)/* ,
                         splitMeetings = $('.splitMeetings').prop('checked') */;
 
                     this.useComma = $('.comma').prop('checked');
@@ -638,9 +638,6 @@
                                         if (u.data.UserName === currentUserName) {
                                             $select.find('option[selected]').removeAttr('selected');
                                             $option.attr('selected', 'selected');
-                                            if (u.data.Disabled === true || u.data.Deleted === true) { 
-                                                $option.addClass('noActive');
-                                            }
                                         }
                                     });
                                 },
@@ -724,10 +721,13 @@
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
                     var activeUsersOnly = $('.activeUsersOnly').prop('checked')/* ,
-                        splitMeetings = $('.splitMeetings').prop('checked') */;
+                        splitMeetings = $('.splitMeetings').prop('checked')*/ ; 
                     app.useComma = $('.comma').prop('checked');
-                    app.getUsers();
                     app.createView(app._lastRecords, activeUsersOnly/* , splitMeetings */);
+                }, 200))
+                .on('change','.activeUsersOnly', setTimeout.bind(null, function() {
+                    var activeUsersOnly = $('.activeUsersOnly').prop('checked');
+                    app.getUsers();
                 }, 200))
                 .on('click', 'thead tr.info', function() {
                     var $tbody = $(this).closest('table').find('tbody');
@@ -747,6 +747,7 @@
                     testerActiveXObject = null;
                 }
             })(); */
+            var activeUsersOnly = $('.activeUsersOnly').prop('checked','checked');
 			app.getUsers();
 			app.run();
         });
