@@ -358,21 +358,13 @@
                         }
                         var uniq = {},
                             feat = /* r.meetings
-<<<<<<< HEAD
-                                       ? splitMeetings ? */ r.Feature  /*+ ': ' + r.Task : r.Feature + ': ' + r.meetings.map(function(rec)  {
-=======
                                        ? splitMeetings ? r.Feature + ': ' + r.Task : r.Feature + ': ' + r.meetings.map(function(rec) {
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
-                                                 return rec.Task;
+                                                return rec.Task;
                                              }).filter(function(subj) {
                                                  subj = subj.toLowerCase();
                                                  return uniq.hasOwnProperty(subj) ? false : uniq[subj] = true;
                                              }).join(', ')
-<<<<<<< HEAD
-                                       : r.Feature;*/
-=======
                                        :  */r.Feature;
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
                         feat = uniqFeature[feat.toLowerCase()] ? uniqFeature[feat.toLowerCase()] : uniqFeature[feat.toLowerCase()] = feat;
                         if (!features[feat]) {
                             features[feat] = true;
@@ -565,17 +557,11 @@
                     return results;
                 },
  */
-<<<<<<< HEAD
+            
                 run: function(user) {
                     var self = this,
-                        activeUsersOnly = $('.activeUsersOnly').prop('checked', 'checked')/* ,
-=======
-                
-                run: function(user) {
-                    var self = this,
-                        activeUsersOnly = $('.activeUsersOnly').prop('checked'/* , 'checked' */)/* ,
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
-                        splitMeetings = $('.splitMeetings').prop('checked') */;
+                        activeUsersOnly = $('.activeUsersOnly').prop('checked', 'checked');
+
 
                     this.useComma = $('.comma').prop('checked');
                     this.dateStr = $('.date').val();
@@ -619,11 +605,7 @@
                     $('.app').hide();                        
                     
                     this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, activeUsersOnly/* , splitMeetings */) {
-<<<<<<< HEAD
-                        this.createView(/* this.pullOutloookAppointments(records) */records, activeUsersOnly/* , splitMeetings */); 
-=======
-                        this.createView(/* this.pullOutloookAppointments( */records/* ) */, activeUsersOnly/* , splitMeetings */); 
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
+                         this.createView(/* this.pullOutloookAppointments(records) */records, activeUsersOnly/* , splitMeetings */); 
                     }.bind(this));
                 },
 
@@ -739,21 +721,14 @@
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
                     var activeUsersOnly = $('.activeUsersOnly').prop('checked')/* ,
-<<<<<<< HEAD
-                        splitMeetings = $('.splitMeetings').prop('checked') */;
-=======
-                        splitMeetings = $('.splitMeetings').prop('checked')*/ ; 
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
+                                            splitMeetings = $('.splitMeetings').prop('checked') */;
                     app.useComma = $('.comma').prop('checked');
                     app.createView(app._lastRecords, activeUsersOnly/* , splitMeetings */);
                 }, 200))
                 .on('change','.activeUsersOnly', setTimeout.bind(null, function() {
                     var activeUsersOnly = $('.activeUsersOnly').prop('checked');
                     app.getUsers();
-<<<<<<< HEAD
                     app.createView(app._lastRecords, activeUsersOnly/* , splitMeetings */);
-=======
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
                 }, 200))
                 .on('click', 'thead tr.info', function() {
                     var $tbody = $(this).closest('table').find('tbody');
@@ -763,11 +738,7 @@
                     app.run($(this).val());
                 });
 
-<<<<<<< HEAD
-         /*    (function (undefined) {
-=======
             /* (function (undefined) {
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
                 var testerActiveXObject = null;
                 try {
                     testerActiveXObject = new ActiveXObject('htmlfile');
@@ -777,10 +748,7 @@
                     testerActiveXObject = null;
                 }
             })(); */
-<<<<<<< HEAD
-=======
             var activeUsersOnly = $('.activeUsersOnly').prop('checked','checked');
->>>>>>> 0d337822455fc1572d56fc4cd9b17d6dd0f6dbdd
 			app.getUsers();
 			app.run();
         });
