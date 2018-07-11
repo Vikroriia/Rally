@@ -108,9 +108,11 @@
 
                             _onItemsLoaded: function(store, data) {
                                 var d = self.getMonthEndDate(self.getMonthStartDate());
-                                data = data.map(function(v) { return v.data; }).filter(function(e) {
-                                    return e.WeekStartDate < d && !!e.WorkProduct;
-                                });
+                                data = data.map(function(v) { 
+											return v.data; 
+										}).filter(function(e) {
+                                    		return e.WeekStartDate < d && !!e.WorkProduct;
+                                	});
                                 var that = this;
                                 $.when.apply($, data.filter(function(entry) {									
 									return entry.WorkProduct._type === 'Defect';									
@@ -451,7 +453,7 @@
                     $('.output').empty();
                 },
 				
-				createViewResults: function(records, split, merge, splitMeetings) {
+				createViewResults: function(records) {
 				if(!!records){
 					this._lastRecords = records;
 					$('output').remove();
@@ -485,18 +487,10 @@
 							storeByDate[r.ShortDate] = {};
 						}
 						var uniq = {},
-							feat = r.meetings
-									   ? splitMeetings ? r.Feature + ': ' + r.Task : r.Feature + ': ' + r.meetings.map(function(rec) {
-												 return rec.Task;
-											 }).filter(function(subj) {
-												 subj = subj.toLowerCase();
-												 return uniq.hasOwnProperty(subj) ? false : uniq[subj] = true;
-											 }).join(', ')
-									   : r.Feature;
+							feat = r.Feature;
 						feat = uniqFeature[feat.toLowerCase()] ? uniqFeature[feat.toLowerCase()] : uniqFeature[feat.toLowerCase()] = feat;
 
-                        //=================================================================================
-						if (!features[feat]) {
+                        if (!features[feat]) {
 							features[feat] = true;
 							features.push(feat);
 						}
@@ -599,14 +593,13 @@
                     records.map(function(r) {
                         r.team = team;
 						r.user = user;
-                        console.log(r);
                         return r;
                     }).forEach(function(r) {
                         results.push(r);
                     });
                 },
 
-                fetchAllProjectsAndCreateView: function (user, projects, results, split, merge, splitMeetings) {
+                fetchAllProjectsAndCreateView: function (user, projects, results) {
                     if (!projects.length) {
                         return null;
                     }
@@ -628,7 +621,7 @@
                     });
                 },
 				
-				fetchAllData: function (user, projects, results, split, merge, splitMeetings) {
+				fetchAllData: function (user, projects, results) {
                     if (!projects.length) {
                         return null;
                     }	
@@ -649,18 +642,36 @@
                     });
                 },
 
-                run: function() {
-                    var self = this,
-                        split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
+                run: function(usersArray, that) {
+					if(!!usersArray) {
+                    	var self = this;
+					} else {
+						var self = that;
+						self.log('Loading time entries... <b id="progress"></b>');
+						
+						var resultsLoaded = 0,
+							$progress = $('#progress');
+					}
                     this.useComma = $('.comma').prop('checked');
-                    
+						
                     Rally.onReady(function () {
                         var loadAll = function (projects) {
                             if (projects.length) {
                                 $('.app').hide();
-                                self.fetchAllProjectsAndCreateView(Rally.environment.getContext().getUser().UserName, projects, [], split, merge, splitMeetings);
+                                if(!!usersArray) {
+									self.fetchAllProjectsAndCreateView(Rally.environment.getContext().getUser().UserName, projects, []);
+								} else {
+									usersArray.forEach(function(user){
+										self.fetchAllData(user, projects, []);
+									});
+									var intervalID = setInterval(function () {
+										if (numUsersFetchedData == usersArray.length) {
+											clearInterval(intervalID);
+											self.createViewResults(resultsArray);
+										}
+										$progress.text((resultsLoaded = numUsersFetchedData * 100/usersArray.length).toFixed(0) + '%');
+									}, 500 );
+								}
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
@@ -672,8 +683,7 @@
                             autoLoad: true,
                             listeners: {
                                 load: function (x, projects) {
-									
-                                    projects = projects.map(function(p) {
+							        projects = projects.map(function(p) {
                                         return { id: p.data.ObjectID, name: p.data.Name };
                                     });
                                     localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
@@ -692,10 +702,7 @@
                 },
 
 		        runAll: function(usersArray, that) {
-                    var self = that,
-                        split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
+                    var self = that;
 						
 					self.log('Loading time entries... <b id="progress"></b>');
 					
@@ -708,16 +715,18 @@
                         var loadAll = function (projects) {
                             if (projects.length) {
                                 $('.app').hide();
-								usersArray.forEach(function(user){
-									self.fetchAllData(user, projects, [], split, merge, splitMeetings);
-								});
-								var intervalID = setInterval(function () {
-									if (numUsersFetchedData == usersArray.length) {
-										clearInterval(intervalID);
-										self.createViewResults(resultsArray, split, merge, splitMeetings);
-									}
-									$progress.text((resultsLoaded = numUsersFetchedData * 100/usersArray.length).toFixed(0) + '%');
-								}, 500 );
+
+									usersArray.forEach(function(user){
+										self.fetchAllData(user, projects, []);
+									});
+									var intervalID = setInterval(function () {
+										if (numUsersFetchedData == usersArray.length) {
+											clearInterval(intervalID);
+											self.createViewResults(resultsArray);
+										}
+										$progress.text((resultsLoaded = numUsersFetchedData * 100/usersArray.length).toFixed(0) + '%');
+									}, 500 );
+
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
@@ -749,82 +758,6 @@
 
 				getUsers: function(callback) {
 					var that = this;	
-                    var userFilter = Rally.data.wsapi.Filter.or([
-                        //{property: 'UserName', operator: '=', value: 'alexey.guzenko@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'anton.drozdov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'vladislav.melekhov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'dmitriy.schepetkov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'yuri.panfilov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexander.kondratenko@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'iurii.baikov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'denis.fominykh@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'elizaveta.pushkar@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'igor.ryabkov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'ruslan.maksimchuk@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'evgeniy.kozlov@arcadia.spb.ru'},   
-                        //{property: 'UserName', operator: '=', value: 'dmitriy.volkov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'antonina.dudka@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'boris.ruban@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'dmitriy.suzdorf@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'stanislav.gants@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'evgeniy.petukhov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexander.kobelev@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexander.usanov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'anton.ivanovv@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'dmitriy.shelemov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'vladislav.pushkin@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'zoya.samigulova@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexander.nasyrov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'dmitriy.kasymov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'nikita.kholodilov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'olga.kuzmina@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'pavel.seleznev@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'renat.zamaletdinov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'armine.avagyan@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'denis.raskin@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'dmitriy.korotaev@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'elena.milukova@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'pavel.iankin@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'georgiy.chernov@btl.com'},
-                        //{property: 'UserName', operator: '=', value: 'alexander.solodov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'vasiliy.orekhov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'elena.gomina@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'vera.levchenko@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'stanislav.nadtochiy@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexey.baryshok@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexey.volgin@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'julia.balashova@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'sergey.lokshin@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'vladislav.ivanov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'artyom.belikin@arcadia.spb.ru'},
-                        {property: 'UserName', operator: '=', value: 'dmitriy.shiryaev@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'gregory.bessonov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'natalia.kostyanetskaya@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'olga.rakhimkulova@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'valentin.zolotnikov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexey.kharitonov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'anna.sokolova@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'dmitriy.burets@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'gleb.syrtsev@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'konstantin.poklonskiy@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'maria.osminkina@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'andrey.sonets@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'anton.burdyugov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'elena.zotova@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'maria.krol@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'nikita.gusev@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'vladimir.rabotkin@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'alexander.nedelko@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'evgeniy.savitskiy@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'yuriy.baryshkov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'maria.vasilieva@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'nail.murtazin@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'nikolay.malikov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'ratmir.kremcheev@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'dmitry.drozdov@arcadia.spb.ru'},
-                        //{property: 'UserName', operator: '=', value: 'vitaliy.tyushin@arcadia.spb.ru'},
-                        {property: 'UserName', operator: '=', value: 'artem.zyryanov@arcadia.spb.ru'},
-                    ]);			
                     Rally.onReady(function() {
                         Ext.create('Rally.data.wsapi.Store', {
                             model: 'user',
@@ -838,14 +771,13 @@
 									.forEach(function (u) {
 										usersArray.push(u.data.UserName);
                                     });
-									callback(usersArray, that);								
+									callback(usersArray, that);				
                                 },
                                 scope: this
                             },
-                            fetch: ['UserName', 'TeamMemberships', 'Department', 'DisplayName', 'Role', 'ShortDisplayName', 'FirstName', 'LastName'],
+                            fetch: ['UserName', 'Department', 'DisplayName', 'ShortDisplayName', 'FirstName', 'LastName'],
                             filters: [
-                                { property: 'Department', operator: '=', value: 'Arcadia' },
-                                userFilter
+                                { property: 'Department', operator: '=', value: 'Arcadia' }
                             ],
                             context: {
                                 projectScopeDown: true,
@@ -854,18 +786,10 @@
                             pageSize: 100
                         });
                     });
-                },
-
-                teamMergeMap: {
-                    'Purple Team': 'Cadia',
-                    'Yellow Team': 'Solaris'
                 }
             };
 
         $(document).ready(function () {
-			$('.split').closest('.checkbox-inline').hide();
-			$('.merge').closest('.checkbox-inline').hide();
-			$('.splitMeetings').closest('.checkbox-inline').hide();
 			$('.comma').closest('.checkbox-inline').hide();
 			$('.export').hide();
             
@@ -884,22 +808,19 @@
                     app.exportTableToCSV.apply(this, [$('table'), $("#monthSelect :selected").text()+'Features.csv']);
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
-                    var split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
-					app.useComma = $('.comma').prop('checked');
-					app.createViewResults(app._lastRecords, split, merge, splitMeetings);
+                    app.useComma = $('.comma').prop('checked');
+					app.createViewResults(app._lastRecords);
                 }, 200))
 				.on('change', '#monthSelect', function() {
 					resultsArray =[];
 					numUsersFetchedData = 0;
 					usersByFeature ={};
-					app.getUsers(app.runAll);
+					app.getUsers(app.run);
 				})
 				.on('dblclick', '.featRows', function(event){
 					app.showFeatureUsers(event.target);
 				});	
-			app.run();
+			app.run([],this);
         });
     </script>
 </head>
@@ -935,15 +856,6 @@
 				<option value="10" >November</option>
 				<option value="11" >December</option>
             </select>
-            <label class="checkbox-inline" >
-                <input type="checkbox" class="split" value="true" />Split by Planet
-            </label>
-            <label class="checkbox-inline" title="Yellow Team => Solaris, Purple Team => Cadia">
-                <input type="checkbox" class="merge" value="true" checked="checked"/>Merge old teams
-            </label>
-			<label class="checkbox-inline">
-                <input type="checkbox" class="splitMeetings" value="true"/>Split Meetings
-            </label>
             <label class="checkbox-inline">
                 <input type="checkbox" class="comma" value="true" checked="checked" />Use comma for decimals
             </label>
