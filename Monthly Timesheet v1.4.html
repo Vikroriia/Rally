@@ -85,7 +85,7 @@
                                     model: 'timeentryitem',
                                     autoLoad: true,
                                     listeners: { load: this._onItemsLoaded, scope: this },
-                                    fetch: ['User', 'UserName', 'WeekStartDate', 'Values', 'WorkProduct', '_ref', 'Task', 'Feature', 'FeatureDisplayString', 'FormattedID'],
+                                    fetch: ['User', 'UserName', 'WeekStartDate', 'Values', 'WorkProduct', 'WorkProductDisplayString', '_ref', 'Task', 'Feature', 'FeatureDisplayString', 'FormattedID'],
                                     filters: [
                                         {
                                             property: 'WeekStartDate',
@@ -111,7 +111,19 @@
                                     return e.WeekStartDate < d && !!e.WorkProduct;
                                 });
                                 var that = this;
-                                $.when.apply($, data).then(function(parameters) {
+                                $.when.apply($, data.filter(function(entry) {									
+									return entry.WorkProduct._type === 'Defect';									
+                                }).map(function(entry) {
+                                    return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
+                                        if (values.length) {
+                                            var story = values[0].data;
+                                            entry.WorkProduct.Feature = story.Feature;
+                                            entry.WorkProductDisplayString = entry.WorkProduct.Feature
+                                                                                 ? entry.WorkProductDisplayString
+                                                                                 : story.FormattedID + ': ' + story.Name;
+                                        }
+                                    });
+                                }, this)).then(function(parameters) {
                                     return $.when.apply($, data.map(function(entry) { 
                                         return that.fetch(that._loadValuesPromise(entry)).then(function (values) {
                                             //console.log(values);
@@ -119,6 +131,29 @@
                                         });
                                     }, that));
                                 }).then(this._onItemValueLoaded.bind(this, data));
+                            },
+
+                            _loadFeaturesForDefectsPromise: function (entry) {
+                                return function(resolve, reject) {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'hierarchicalrequirement',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function (store, values) {
+                                                resolve(values);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['Feature', 'FormattedID', 'Name'],
+                                        filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
+                                        context: {
+                                            //project: '/project/' + project,
+                                            projectScopeDown: true,
+                                            projectScopeUp: true
+                                        },
+                                        pageSize: 500
+                                    });
+                                };
                             },
 
                             _loadValuesPromise: function (entry) {
@@ -142,6 +177,71 @@
                                         pageSize: 500
                                     });
                                 };
+                            },
+
+                            _loadFeaturesForDefects: function(timeEntries, index, callback) {
+                                index = index || 0;
+                                if (timeEntries.length <= index) {
+                                    return callback(timeEntries);
+                                }
+                                var entry = timeEntries[index];
+                                if (entry.WorkProduct._type === 'Defect') {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'hierarchicalrequirement',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function(store, values) {
+                                                if (values.length) {
+                                                    var story = values[0].data;
+                                                    entry.WorkProduct.Feature = story.Feature;
+                                                    entry.WorkProductDisplayString = entry.WorkProduct.Feature
+                                                                                        ? entry.WorkProductDisplayString
+                                                                                        : story.FormattedID + ': ' + story.Name;
+                                                }
+                                                return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['Feature', 'FormattedID', 'Name'],
+                                        filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
+                                        context: {
+                                            //project: '/project/' + project,
+                                            projectScopeDown: true,
+                                            projectScopeUp: true
+                                        },
+                                        pageSize: 500
+                                    });
+                                } else {
+                                    return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
+                                }
+                            },
+
+                            _loadValues: function(timeEntries, index) {
+                                index = index || 0;
+                                if (timeEntries.length <= index) {
+                                    return this._onItemValueLoaded(timeEntries);
+                                }
+                                var entry = timeEntries[index];
+
+                                Ext.create('Rally.data.wsapi.Store', {
+                                    model: 'timeentryvalue',
+                                    autoLoad: true,
+                                    listeners: {
+                                        load: function(store, values) {
+                                            entry.Values = values.map(function(v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            return timeEntries.length - 1 > index ? this._loadValues(timeEntries, ++index) : this._onItemValueLoaded(timeEntries);
+                                        },
+                                        scope: this
+                                    },
+                                    fetch: ['DateVal', 'Hours'],
+                                    filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
+                                    context: {
+                                        //project: '/project/' + project,
+                                        projectScopeDown: true,
+                                        projectScopeUp: true
+                                    },
+                                    pageSize: 500
+                                });
                             },
 
                             _onItemValueLoaded: function(entries) {
@@ -358,16 +458,12 @@
                     this.fetchDataFromRally(function(records) {
                         console.log(records);
                         resultArray = records;
-                    self.createViewResults(resultArray);
+                        console.log(resultArray);
+                        self.createViewResults(resultArray);
                     });
-                    /* console.log(records.length);
-                    for(var i = 0; i < records.length; i++)
-                    {
-                        resultsArray = resultsArray.concat(records[i]);
-                    }; */
                 },
 
-                run: function(usersArray, that, results) {
+                run: function(usersArray, that) {
 					if(!!usersArray) {
                         console.log('run2');
                         var self = that;
@@ -406,7 +502,7 @@
                                     });
                                     console.log(usersArray.length);
                                     console.log(userFilter);
-                                    callback(usersArray, that, []);								
+                                    callback(usersArray, that);								
                                 },
                                 scope: this
                             },
@@ -439,7 +535,7 @@
 					numUsersFetchedData = 0;
                 	app.getUsers(app.run);
 				});	
-			app.run(false, this, []);
+			app.run(false, this);
         });
 	</script>
 </head>
