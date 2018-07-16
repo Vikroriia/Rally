@@ -110,13 +110,11 @@
                             _onItemsLoaded: function(store, data) {
                                 //console.log('_onItemsLoaded');
                                 var d = self.getMonthEndDate(self.getMonthStartDate());
-                                //console.log(data);
                                 data = data.map(function(v) { return v.data; }).filter(function(e) {
                                     return e.WeekStartDate < d && !!e.WorkProduct;
                                 });
                                 var that = this;
                                 $.when.apply($, data.filter(function(entry) {		
-                                    //console.log(entry);							
 									return entry.WorkProduct._type === 'Defect';									
                                 }).map(function(entry) {
                                     return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
@@ -163,7 +161,6 @@
 
                             _loadValuesPromise: function (entry) {
                                 //console.log('_loadValuesPromise');
-                                //console.log(entry);
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
                                         model: 'timeentryvalue',
@@ -241,7 +238,7 @@
                                     autoLoad: true,
                                     listeners: {
                                         load: function(store, values) {
-                                            entry.Values = values.map(function(v) { /* console.log(v.data.DateVal, v.data.Hours); */ return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            entry.Values = values.map(function(v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
                                             return timeEntries.length - 1 > index ? this._loadValues(timeEntries, ++index) : this._onItemValueLoaded(timeEntries);
                                         },
                                         scope: this
@@ -266,14 +263,11 @@
                                     features = {},
                                     records = [];
 
-                                //console.log(entries);
-
                                 entries.forEach(function(entry) {
                                     var feature = getStoryOrFeature(entry);
                                     features[feature] = features[feature] || {};
                                     
                                     entry.Values.forEach(function(value) {
-                                        //console.log(value.DateVal, value.Hours);
                                         records.push({
                                             User: entry.User,
                                             Feature: feature,
