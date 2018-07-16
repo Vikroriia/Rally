@@ -616,6 +616,8 @@
                                 if (numUsersFetchedData == usersArray.length) {
                                     clearInterval(intervalID);
                                     self.createViewResults(resultArray);
+                                    
+                                    console.log('END');
                                 }
                             }, 500 );
                         }
@@ -638,7 +640,7 @@
 										usersArray.push(u.data.UserName); 
                                     });
                                     usersArray.sort();
-                                    console.log(usersArray);
+                                    //console.log(usersArray);
                                     callback(usersArray, that);								
                                 },
                                 scope: this
