@@ -61,8 +61,7 @@
             return dat;
         };
 
-        var userFilter = Rally.data.wsapi.Filter.or([]),
-            resultArray = [],
+        var resultArray = [],
 			usersByFeature = {},
             numUsersFetchedData = 0;
 
@@ -93,8 +92,6 @@
                                             operator: '>=',
                                             value: self.getRangeStartDate()
                                         },
-                                        //{ property: 'UserName', operator: '=', value: 'georgiy.chernov@btl.com' }
-                                        //userFilter
                                         {
                                             property: 'User',
                                             operator: '=',
@@ -103,7 +100,6 @@
                                     ],
                                     orderBy: 'WeekStartDate',
                                     context: {
-                                        //project: '/project/Arcadia',
                                         projectScopeDown: true,
                                         projectScopeUp: false
                                     },
@@ -583,16 +579,12 @@
                         console.log('fetchAllData');
                     var self = this;
                     self.fetchDataFromRally(user, function(records) {
-                            //resultArray = records;
-                            // 
-                            for(var i = 0; i < records.length; i++)
-						{
+                        for(var i = 0; i < records.length; i++) {
 							resultArray = resultArray.concat(records[i]);
 						}
 						numUsersFetchedData++;
-                        });
+                    });
                        
-                        //self.createViewResults(resultArray);
                 },
 
                 run: function(usersArray, that) {
@@ -635,13 +627,9 @@
                                     })
 									.forEach(function (u) {
 										usersArray.push(u.data.UserName); 
-                                        //if (u.data.UserName === 'georgiy.chernov@btl.com') {
-                                        //userFilter.push(u.data.UserName);}
-                                        userFilter.push({property: 'User', operator: '=', value: u.data.UserName});
                                     });
                                     usersArray.sort();
                                     console.log(usersArray);
-                                        console.log(userFilter);
                                     callback(usersArray, that);								
                                 },
                                 scope: this
@@ -670,7 +658,6 @@
                     $this.prop('checked') ? $this.attr('checked', 'checked') : $this.removeAttr('checked');	
                 })
 				.on('click', '.reload', function() {
-                    userFilter = [];
                     resultArray = [];
 			        usersByFeature = {};
                     numUsersFetchedData = 0;
@@ -684,7 +671,6 @@
 					app.createViewResults(app._lastRecords);
                 }, 200))
 				.on('change', '#monthSelect', function() {
-                    userFilter = [];
                     resultArray = [];
 			        usersByFeature = {};
                     numUsersFetchedData = 0;
