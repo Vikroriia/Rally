@@ -69,7 +69,7 @@
 			Ext = Ext,
 			app = {
                 fetchDataFromRally: function(user, callback) {
-                    console.log('fetchDataFromRally');
+                    //console.log('fetchDataFromRally');
                     var self = this;
                     Rally.onReady(function() {
                         var app = {
@@ -80,7 +80,7 @@
                             },
 
                             launch: function() {
-                                console.log('launch');
+                                //console.log('launch');
                                 Ext.create('Rally.data.wsapi.Store', {
                                     model: 'timeentryitem',
                                     autoLoad: true,
@@ -103,19 +103,20 @@
                                         projectScopeDown: true,
                                         projectScopeUp: false
                                     },
-                                    pageSize: 2000
+                                    pageSize: 5000
                                 });
                             },
 
                             _onItemsLoaded: function(store, data) {
-                                console.log('_onItemsLoaded');
+                                //console.log('_onItemsLoaded');
                                 var d = self.getMonthEndDate(self.getMonthStartDate());
-                                console.log(d);
+                                //console.log(data);
                                 data = data.map(function(v) { return v.data; }).filter(function(e) {
                                     return e.WeekStartDate < d && !!e.WorkProduct;
                                 });
                                 var that = this;
-                                $.when.apply($, data.filter(function(entry) {									
+                                $.when.apply($, data.filter(function(entry) {		
+                                    //console.log(entry);							
 									return entry.WorkProduct._type === 'Defect';									
                                 }).map(function(entry) {
                                     return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
@@ -130,7 +131,9 @@
                                 }, this)).then(function(parameters) {
                                     return $.when.apply($, data.map(function(entry) { 
                                         return that.fetch(that._loadValuesPromise(entry)).then(function (values) {
-                                            entry.Values = values.map(function (v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            entry.Values = values.map(function (v) { 
+                                                return { DateVal: v.data.DateVal, Hours: v.data.Hours }; 
+                                            });
                                         });
                                     }, that));
                                 }).then(this._onItemValueLoaded.bind(this, data));
@@ -153,20 +156,28 @@
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
-                                        pageSize: 1000
+                                        pageSize: 5000
                                     });
                                 };
                             },
 
                             _loadValuesPromise: function (entry) {
-                                console.log('_loadValuesPromise');
+                                //console.log('_loadValuesPromise');
+                                //console.log(entry);
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
                                         model: 'timeentryvalue',
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                                resolve(values);
+                                               
+                                                if (values !== null) {
+                                                    resolve(values);
+                                                } else { 
+                                                    console.log(values);
+                                                    values = [];
+                                                    resolve(values);
+                                                }
                                             },
                                             scope: this
                                         },
@@ -176,7 +187,7 @@
                                             projectScopeDown: true,
                                             projectScopeUp: false
                                         },
-                                        pageSize: 1000
+                                        pageSize: 5000
                                     });
                                 };
                             },
@@ -210,7 +221,7 @@
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
-                                        pageSize: 1000
+                                        pageSize: 5000
                                     });
                                 } else {
                                     return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
@@ -218,6 +229,7 @@
                             },
 
                             _loadValues: function(timeEntries, index) {
+                                //console.log('_loadValues');
                                 index = index || 0;
                                 if (timeEntries.length <= index) {
                                     return this._onItemValueLoaded(timeEntries);
@@ -229,7 +241,7 @@
                                     autoLoad: true,
                                     listeners: {
                                         load: function(store, values) {
-                                            entry.Values = values.map(function(v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            entry.Values = values.map(function(v) { /* console.log(v.data.DateVal, v.data.Hours); */ return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
                                             return timeEntries.length - 1 > index ? this._loadValues(timeEntries, ++index) : this._onItemValueLoaded(timeEntries);
                                         },
                                         scope: this
@@ -240,12 +252,12 @@
                                         projectScopeDown: true,
                                         projectScopeUp: true
                                     },
-                                    pageSize: 1000
+                                    pageSize: 5000
                                 });
                             },
 
                             _onItemValueLoaded: function(entries) {
-                                console.log('_loadItemValueLoaded');
+                                //console.log('_onItemValueLoaded');
                                 var getStoryOrFeature = function(item) {
 									    return item.WorkProduct.Feature
 											? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
@@ -254,11 +266,14 @@
                                     features = {},
                                     records = [];
 
+                                //console.log(entries);
+
                                 entries.forEach(function(entry) {
                                     var feature = getStoryOrFeature(entry);
                                     features[feature] = features[feature] || {};
-
+                                    
                                     entry.Values.forEach(function(value) {
+                                        //console.log(value.DateVal, value.Hours);
                                         records.push({
                                             User: entry.User,
                                             Feature: feature,
@@ -355,7 +370,7 @@
 				},    
 
                 createView: function() {
-                                console.log('createView');
+                    console.log('createView');
 					$('output').remove();
                     $('.app').show();
                     $('.output').empty();
@@ -445,7 +460,7 @@
 				},
 						
 				createViewResults: function(records) {
-                                console.log('createViewResults');
+                console.log('createViewResults');
 				if(!!records){
 					this._lastRecords = records;
 					$('output').remove();
@@ -576,7 +591,7 @@
                 },
 				
                 fetchAllData: function(user, records) {
-                        console.log('fetchAllData');
+                    //console.log('fetchAllData');
                     var self = this;
                     self.fetchDataFromRally(user, function(records) {
                         for(var i = 0; i < records.length; i++) {
