@@ -69,7 +69,6 @@
 			Ext = Ext,
 			app = {
                 fetchDataFromRally: function(user, callback) {
-                    //console.log('fetchDataFromRally');
                     var self = this;
                     Rally.onReady(function() {
                         var app = {
@@ -80,7 +79,6 @@
                             },
 
                             launch: function() {
-                                //console.log('launch');
                                 Ext.create('Rally.data.wsapi.Store', {
                                     model: 'timeentryitem',
                                     autoLoad: true,
@@ -108,7 +106,6 @@
                             },
 
                             _onItemsLoaded: function(store, data) {
-                                //console.log('_onItemsLoaded');
                                 var d = self.getMonthEndDate(self.getMonthStartDate());
                                 data = data.map(function(v) { return v.data; }).filter(function(e) {
                                     return e.WeekStartDate < d && !!e.WorkProduct;
@@ -160,18 +157,15 @@
                             },
 
                             _loadValuesPromise: function (entry) {
-                                //console.log('_loadValuesPromise');
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
                                         model: 'timeentryvalue',
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                               
                                                 if (values !== null) {
                                                     resolve(values);
                                                 } else { 
-                                                    console.log(values);
                                                     values = [];
                                                     resolve(values);
                                                 }
@@ -226,7 +220,6 @@
                             },
 
                             _loadValues: function(timeEntries, index) {
-                                //console.log('_loadValues');
                                 index = index || 0;
                                 if (timeEntries.length <= index) {
                                     return this._onItemValueLoaded(timeEntries);
@@ -254,7 +247,6 @@
                             },
 
                             _onItemValueLoaded: function(entries) {
-                                //console.log('_onItemValueLoaded');
                                 var getStoryOrFeature = function(item) {
 									    return item.WorkProduct.Feature
 											? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
@@ -364,7 +356,6 @@
 				},    
 
                 createView: function() {
-                    console.log('createView');
 					$('output').remove();
                     $('.app').show();
                     $('.output').empty();
@@ -454,7 +445,6 @@
 				},
 						
 				createViewResults: function(records) {
-                console.log('createViewResults');
 				if(!!records){
 					this._lastRecords = records;
 					$('output').remove();
@@ -467,12 +457,9 @@
 						dates = [],
 						datesForView = [],
 						daysOfWeek =[],
-						features = [],
-						projects = [];
+						features = [];
 
 					records.sort(function(a, b) { return a.DateVal - b.DateVal; });
-
-                    console.log(records);
 
 					var date = this.getMonthStartDate();
 					var endDate = this.getMonthEndDate(date);
@@ -522,8 +509,7 @@
 						total,
 						tbody,
 						sumHours,
-						monthHours,
-						project;
+						monthHours;
 
 						table = $('<table>', { 'class': 'table  table-hover' });
 						tr = $('<tr class="info">');
@@ -585,7 +571,6 @@
                 },
 				
                 fetchAllData: function(user, records) {
-                    //console.log('fetchAllData');
                     var self = this;
                     self.fetchDataFromRally(user, function(records) {
                         for(var i = 0; i < records.length; i++) {
@@ -616,8 +601,6 @@
                                 if (numUsersFetchedData == usersArray.length) {
                                     clearInterval(intervalID);
                                     self.createViewResults(resultArray);
-                                    
-                                    console.log('END');
                                 }
                             }, 500 );
                         }
@@ -640,7 +623,6 @@
 										usersArray.push(u.data.UserName); 
                                     });
                                     usersArray.sort();
-                                    //console.log(usersArray);
                                     callback(usersArray, that);								
                                 },
                                 scope: this
