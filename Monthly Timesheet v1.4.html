@@ -48,27 +48,28 @@
 		.weekends  {
 			background-color: #FAF2F0;
 		}
-    </style>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+	</style>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
     <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0/sdk.js"></script>
     <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 	<script type="text/javascript" src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
-    <script type="text/javascript">
+	<script type="text/javascript">
 		Date.prototype.addDays = function (days) {
             var dat = new Date(this.valueOf());
             dat.setDate(dat.getDate() + days);
             return dat;
         };
-		
-		var resultsArray = [],
-			usersByFeature ={},
-			numUsersFetchedData = 0;
 
-        var Rally = Rally,
-            Ext = Ext,
-            app = {
-                fetchDataFromRally: function(user, project, callback) {
+        var resultArray = [],
+			usersByFeature = {},
+            numUsersFetchedData = 0;
+
+		var Rally = Rally,
+			Ext = Ext,
+			app = {
+                fetchDataFromRally: function(user, callback) {
+                    //console.log('fetchDataFromRally');
                     var self = this;
                     Rally.onReady(function() {
                         var app = {
@@ -79,11 +80,12 @@
                             },
 
                             launch: function() {
+                                //console.log('launch');
                                 Ext.create('Rally.data.wsapi.Store', {
                                     model: 'timeentryitem',
                                     autoLoad: true,
                                     listeners: { load: this._onItemsLoaded, scope: this },
-                                    fetch: ['TaskDisplayString', 'ProjectDisplayString', 'WorkProductDisplayString', 'WeekStartDate', 'Values', 'Task', 'WorkProduct', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
+                                    fetch: ['User', 'UserName', 'FirstName', 'LastName', 'DisplayName', 'Department', 'ShortDisplayName', 'WeekStartDate', 'Values', 'WorkProduct', 'WorkProductDisplayString', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
                                     filters: [
                                         {
                                             property: 'WeekStartDate',
@@ -98,21 +100,21 @@
                                     ],
                                     orderBy: 'WeekStartDate',
                                     context: {
-                                        project: '/project/' + project,
-                                        projectScopeDown: false,
+                                        projectScopeDown: true,
                                         projectScopeUp: false
                                     },
-                                    pageSize: 500
+                                    pageSize: 5000
                                 });
                             },
 
                             _onItemsLoaded: function(store, data) {
+                                //console.log('_onItemsLoaded');
                                 var d = self.getMonthEndDate(self.getMonthStartDate());
                                 data = data.map(function(v) { return v.data; }).filter(function(e) {
                                     return e.WeekStartDate < d && !!e.WorkProduct;
                                 });
                                 var that = this;
-                                $.when.apply($, data.filter(function(entry) {									
+                                $.when.apply($, data.filter(function(entry) {		
 									return entry.WorkProduct._type === 'Defect';									
                                 }).map(function(entry) {
                                     return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
@@ -125,9 +127,11 @@
                                         }
                                     });
                                 }, this)).then(function(parameters) {
-                                    return $.when.apply($, data.map(function(entry) {
+                                    return $.when.apply($, data.map(function(entry) { 
                                         return that.fetch(that._loadValuesPromise(entry)).then(function (values) {
-                                            entry.Values = values.map(function (v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            entry.Values = values.map(function (v) { 
+                                                return { DateVal: v.data.DateVal, Hours: v.data.Hours }; 
+                                            });
                                         });
                                     }, that));
                                 }).then(this._onItemValueLoaded.bind(this, data));
@@ -147,34 +151,40 @@
                                         fetch: ['Feature', 'FormattedID', 'Name'],
                                         filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
                                         context: {
-                                            project: '/project/' + project,
-                                            projectScopeDown: false,
-                                            projectScopeUp: false
+                                            projectScopeDown: true,
+                                            projectScopeUp: true
                                         },
-                                        pageSize: 500
+                                        pageSize: 5000
                                     });
                                 };
                             },
 
                             _loadValuesPromise: function (entry) {
+                                //console.log('_loadValuesPromise');
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
                                         model: 'timeentryvalue',
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                                resolve(values);
+                                               
+                                                if (values !== null) {
+                                                    resolve(values);
+                                                } else { 
+                                                    console.log(values);
+                                                    values = [];
+                                                    resolve(values);
+                                                }
                                             },
                                             scope: this
                                         },
                                         fetch: ['DateVal', 'Hours'],
                                         filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
                                         context: {
-                                            project: '/project/' + project,
-                                            projectScopeDown: false,
+                                            projectScopeDown: true,
                                             projectScopeUp: false
                                         },
-                                        pageSize: 500
+                                        pageSize: 5000
                                     });
                                 };
                             },
@@ -195,8 +205,8 @@
                                                     var story = values[0].data;
                                                     entry.WorkProduct.Feature = story.Feature;
                                                     entry.WorkProductDisplayString = entry.WorkProduct.Feature
-                                                                                         ? entry.WorkProductDisplayString
-                                                                                         : story.FormattedID + ': ' + story.Name;
+                                                                                        ? entry.WorkProductDisplayString
+                                                                                        : story.FormattedID + ': ' + story.Name;
                                                 }
                                                 return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
                                             },
@@ -205,11 +215,10 @@
                                         fetch: ['Feature', 'FormattedID', 'Name'],
                                         filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
                                         context: {
-                                            project: '/project/' + project,
-                                            projectScopeDown: false,
-                                            projectScopeUp: false
+                                            projectScopeDown: true,
+                                            projectScopeUp: true
                                         },
-                                        pageSize: 500
+                                        pageSize: 5000
                                     });
                                 } else {
                                     return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
@@ -217,6 +226,7 @@
                             },
 
                             _loadValues: function(timeEntries, index) {
+                                //console.log('_loadValues');
                                 index = index || 0;
                                 if (timeEntries.length <= index) {
                                     return this._onItemValueLoaded(timeEntries);
@@ -236,17 +246,17 @@
                                     fetch: ['DateVal', 'Hours'],
                                     filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
                                     context: {
-                                        project: '/project/' + project,
-                                        projectScopeDown: false,
-                                        projectScopeUp: false
+                                        projectScopeDown: true,
+                                        projectScopeUp: true
                                     },
-                                    pageSize: 500
+                                    pageSize: 5000
                                 });
                             },
 
                             _onItemValueLoaded: function(entries) {
+                                //console.log('_onItemValueLoaded');
                                 var getStoryOrFeature = function(item) {
-									return item.WorkProduct.Feature
+									    return item.WorkProduct.Feature
 											? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
 											: item.WorkProductDisplayString;
                                     },
@@ -256,31 +266,22 @@
                                 entries.forEach(function(entry) {
                                     var feature = getStoryOrFeature(entry);
                                     features[feature] = features[feature] || {};
-
+                                    
                                     entry.Values.forEach(function(value) {
                                         records.push({
-                                            Task: entry.TaskDisplayString,
+                                            User: entry.User,
                                             Feature: feature,
                                             ShortDate: self.formatDate(value.DateVal),
                                             Hours: value.Hours
                                         });
                                     });
                                 }, this);
-
                                 return callback(records);
-                            }
+                            }              
                         };
+
                         app.launch();
                     });
-                },
-
-                log: function(text) {
-                    var out = $('output');
-                    if (!out.length) {
-                        out = $('<output>').appendTo('body');
-                        out.height($(window).height() - 50);
-                    }
-                    out.append('<p>' + text + '</p>');
                 },
 
                 sumHours: function(hours) {
@@ -304,15 +305,15 @@
                 },
 
                 getRangeStartDate: function() {
-					var year = $("#yearSelect :selected").val();
-					var month = $("#monthSelect :selected").val();
-                    var date = new Date(year, month, 1);
+					var year = $("#yearSelect :selected").val(),
+					    month = $("#monthSelect :selected").val(),
+                        date = new Date(year, month, 1);
                     return this.getWeekStart(new Date(date.getFullYear(), date.getMonth(), 1)).addDays(-1);
                 },
 				
 				getMonthStartDate: function() {
-					var year = $("#yearSelect :selected").val();
-					var month = $("#monthSelect :selected").val();
+					var year = $("#yearSelect :selected").val(),
+                        month = $("#monthSelect :selected").val();
                     return new Date(year, month, 1);
                 },
 				
@@ -327,7 +328,7 @@
                     var day = d.getDay(),
                         diff = d.getDate() - day + (day === 0 ? -6 : 1);
                     return new Date(d.setDate(diff));
-                },
+                },  
 				
 				exportTableToCSV: function ($table, filename) {
 					var $rows = $table.find('tr');
@@ -360,7 +361,14 @@
 						'href' : csvData,
 						'target' : '_blank'
 					});
-				},
+				},    
+
+                createView: function() {
+                    console.log('createView');
+					$('output').remove();
+                    $('.app').show();
+                    $('.output').empty();
+                },
 				
 				showFeatureUsers: function (target) {
 					feature = $(target).text();
@@ -444,14 +452,9 @@
 						}
 					});
 				},
-				
-                createView: function() {
-					$('output').remove();
-                    $('.app').show();
-                    $('.output').empty();
-                },
-				
-				createViewResults: function(records, split, merge, splitMeetings) {
+						
+				createViewResults: function(records) {
+                console.log('createViewResults');
 				if(!!records){
 					this._lastRecords = records;
 					$('output').remove();
@@ -469,6 +472,8 @@
 
 					records.sort(function(a, b) { return a.DateVal - b.DateVal; });
 
+                    console.log(records);
+
 					var date = this.getMonthStartDate();
 					var endDate = this.getMonthEndDate(date);
 
@@ -478,29 +483,18 @@
 						daysOfWeek.push(date.getDay());
 						date = date.addDays(1);
 					}
-
 					var uniqFeature = {};
 					records.forEach(function(r) {
 						if (!storeByDate[r.ShortDate]) {
 							storeByDate[r.ShortDate] = {};
 						}
 						var uniq = {},
-							feat = r.meetings
-									   ? splitMeetings ? r.Feature + ': ' + r.Task : r.Feature + ': ' + r.meetings.map(function(rec) {
-												 return rec.Task;
-											 }).filter(function(subj) {
-												 subj = subj.toLowerCase();
-												 return uniq.hasOwnProperty(subj) ? false : uniq[subj] = true;
-											 }).join(', ')
-									   : r.Feature;
+							feat = r.Feature;
+                            user = r.User.LastName ? r.User.LastName + ' ' + r.User.FirstName : r.User.DisplayName || r.User.UserName;
 						feat = uniqFeature[feat.toLowerCase()] ? uniqFeature[feat.toLowerCase()] : uniqFeature[feat.toLowerCase()] = feat;
 						if (!features[feat]) {
 							features[feat] = true;
 							features.push(feat);
-						}
-						if (!projects[r.team]) {
-							projects[r.team] = true;
-							projects.push(r.team);
 						}
 						if (!storeByDate[r.ShortDate][feat]) {
 							storeByDate[r.ShortDate][feat] = [];
@@ -511,15 +505,11 @@
 						if (!usersByFeature[feat][r.ShortDate]) {
 							usersByFeature[feat][r.ShortDate] = {};
 						}
-						if(!usersByFeature[feat][r.ShortDate][r.user]) {
-						usersByFeature[feat][r.ShortDate][r.user] = [];
-						}
-						if (!storeByDate[r.ShortDate][feat + r.team]) {
-							storeByDate[r.ShortDate][feat + r.team] = [];
+						if(!usersByFeature[feat][r.ShortDate][user]) {
+						usersByFeature[feat][r.ShortDate][user] = [];
 						}
 						storeByDate[r.ShortDate][feat].push(r.Hours);
-						storeByDate[r.ShortDate][feat + r.team].push(r.Hours);
-						usersByFeature[feat][r.ShortDate][r.user].push(r.Hours); 
+						usersByFeature[feat][r.ShortDate][user].push(r.Hours); 
 					});
 					
 					var table,
@@ -540,7 +530,7 @@
 						tr.append('<th>Feature / User story</th>');
 
 						for (i = 0; i <= dates.length; i++) {
-							if(i < dates.length){
+							if (i < dates.length){
 								if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
 								else tr.append('<th>' + datesForView[i] + '</th>');
 							}
@@ -593,155 +583,44 @@
                 round: function(value) {
                     return Number(Math.round(value + 'e' + 2) + 'e-' + 2);
                 },
-
-                addRecords: function(results, records, team, user) {
-                    records.map(function(r) {
-                        r.team = team;
-						r.user = user;
-                        return r;
-                    }).forEach(function(r) {
-                        results.push(r);
-                    });
-                },
-
-                fetchAllProjectsAndCreateView: function (user, projects, results, split, merge, splitMeetings) {
-                    if (!projects.length) {
-                        return null;
-                    }
-                    var self = this;
-                    self.log('Preparing data... <b id="progress"></b>');
-                    var projectsLoaded = 0,
-                        step = 100 / projects.length,
-                        $progress = $('#progress');
-                    $.when.apply($, projects.map(function (project) {
-						var d = $.Deferred();
-                        this.fetchDataFromRally(user, project.id, function(records) {
-                            self.addRecords(results, records, project.name, user);
-                            $progress.text((projectsLoaded = projectsLoaded + step).toFixed(0) + '%');
-                            d.resolve();
-                        });
-                        return d.promise();
-                    }, this)).then(function() {
-                        self.createView();
-                    });
-                },
 				
-				fetchAllData: function (user, projects, results, split, merge, splitMeetings) {
-                    if (!projects.length) {
-                        return null;
-                    }	
+                fetchAllData: function(user, records) {
+                    //console.log('fetchAllData');
                     var self = this;
-                    $.when.apply($, projects.map(function (project) {
-						var d = $.Deferred();
-                        this.fetchDataFromRally(user, project.id, function(records) {
-                            self.addRecords(results, records, project.name, user);
-                            d.resolve();
-                        });
-                        return d.promise();
-                    }, this)).then(function() {
-						for(var i = 0; i < results.length; i++)
-						{
-							resultsArray = resultsArray.concat(results[i]);
+                    self.fetchDataFromRally(user, function(records) {
+                        for(var i = 0; i < records.length; i++) {
+							resultArray = resultArray.concat(records[i]);
 						}
 						numUsersFetchedData++;
                     });
+                       
                 },
 
-                run: function() {
-                    var self = this,
-                        split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
+                run: function(usersArray, that) {
+					if(!!usersArray) {
+                        var self = that;
+                    } else {
+                        var self = this;     
+                    }
+
                     this.useComma = $('.comma').prop('checked');
                     
                     Rally.onReady(function () {
-                        var loadAll = function (projects) {
-                            if (projects.length) {
-                                $('.app').hide();
-                                self.fetchAllProjectsAndCreateView(Rally.environment.getContext().getUser().UserName, projects, [], split, merge, splitMeetings);
-                            }
-                        };
-                        var stored = localStorage.getItem('rallyProjectsRaw') || false;
-                        if (stored) {
-                            loadAll(JSON.parse(stored));
+                        if(!!usersArray) {
+                            $('.app').hide();
+                            usersArray.forEach(function(user) {
+                                self.fetchAllData(user, []);
+                            });
+                                    
+                            var intervalID = setInterval(function () {
+                                if (numUsersFetchedData == usersArray.length) {
+                                    clearInterval(intervalID);
+                                    self.createViewResults(resultArray);
+                                    
+                                    console.log('END');
+                                }
+                            }, 500 );
                         }
-                        Ext.create('Rally.data.wsapi.Store', {
-                            model: 'project',
-                            autoLoad: true,
-                            listeners: {
-                                load: function (x, projects) {
-									
-                                    projects = projects.map(function(p) {
-                                        return { id: p.data.ObjectID, name: p.data.Name };
-                                    });
-                                    localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
-                                    stored || loadAll(projects);
-                                },
-                                scope: this
-                            },
-                            fetch: ['Name', '_ref'],
-                            context: {
-                                projectScopeDown: true,
-                                projectScopeUp: false
-                            },
-                            pageSize: 500
-                        });
-                    });
-                },
-
-				runAll: function(usersArray, that) {
-                    var self = that,
-                        split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
-						
-					self.log('Loading time entries... <b id="progress"></b>');
-					
-					var resultsLoaded = 0,
-                        $progress = $('#progress');
-						
-                    this.useComma = $('.comma').prop('checked');
-                    
-                    Rally.onReady(function () {
-                        var loadAll = function (projects) {
-                            if (projects.length) {
-                                $('.app').hide();
-								usersArray.forEach(function(user){
-									self.fetchAllData(user, projects, [], split, merge, splitMeetings);
-								});
-								var intervalID = setInterval(function () {
-									if (numUsersFetchedData == usersArray.length) {
-										clearInterval(intervalID);
-										self.createViewResults(resultsArray, split, merge, splitMeetings);
-									}
-									$progress.text((resultsLoaded = numUsersFetchedData * 100/usersArray.length).toFixed(0) + '%');
-								}, 500 );
-                            }
-                        };
-                        var stored = localStorage.getItem('rallyProjectsRaw') || false;
-                        if (stored) {
-                            loadAll(JSON.parse(stored));
-                        }
-                        Ext.create('Rally.data.wsapi.Store', {
-                            model: 'project',
-                            autoLoad: true,
-                            listeners: {
-                                load: function (x, projects) {
-                                    projects = projects.map(function(p) {
-                                        return { id: p.data.ObjectID, name: p.data.Name };
-                                    });
-                                    localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
-                                    stored || loadAll(projects);
-                                },
-                                scope: this
-                            },
-                            fetch: ['Name', '_ref'],
-                            context: {
-                                projectScopeDown: true,
-                                projectScopeUp: false
-                            },
-                            pageSize: 500
-                        });
                     });
                 },
 
@@ -758,14 +637,18 @@
                                         return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
                                     })
 									.forEach(function (u) {
-										usersArray.push(u.data.UserName);
+										usersArray.push(u.data.UserName); 
                                     });
-									callback(usersArray, that);								
+                                    usersArray.sort();
+                                    //console.log(usersArray);
+                                    callback(usersArray, that);								
                                 },
                                 scope: this
                             },
-                            fetch: ['UserName', 'TeamMemberships', 'Department', 'DisplayName', 'Role', 'ShortDisplayName', 'FirstName', 'LastName'],
-                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' }],
+                            fetch: ['UserName', 'Department', '_refObjectUUID'],
+                            filters: [
+                                { property: 'Department', operator: '=', value: 'Arcadia' }
+                            ],
                             context: {
                                 projectScopeDown: true,
                                 projectScopeUp: false
@@ -773,18 +656,10 @@
                             pageSize: 100
                         });
                     });
-                },
+                }				
+			};
 
-                teamMergeMap: {
-                    'Purple Team': 'Cadia',
-                    'Yellow Team': 'Solaris'
-                }
-            };
-
-        $(document).ready(function () {
-			$('.split').closest('.checkbox-inline').hide();
-			$('.merge').closest('.checkbox-inline').hide();
-			$('.splitMeetings').closest('.checkbox-inline').hide();
+		$(document).ready(function () {
 			$('.comma').closest('.checkbox-inline').hide();
 			$('.export').hide();
             
@@ -794,33 +669,30 @@
                     $this.prop('checked') ? $this.attr('checked', 'checked') : $this.removeAttr('checked');	
                 })
 				.on('click', '.reload', function() {
-                    resultsArray =[];
-					numUsersFetchedData = 0;
-					usersByFeature ={};
-					app.getUsers(app.runAll);
+                    resultArray = [];
+			        usersByFeature = {};
+                    numUsersFetchedData = 0;
+                	app.getUsers(app.run);
                 })
                 .on('click', '.export', function(event) {
                     app.exportTableToCSV.apply(this, [$('table'), $("#monthSelect :selected").text()+'Features.csv']);
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
-                    var split = $('.split').prop('checked'),
-                        splitMeetings = $('.splitMeetings').prop('checked'),
-                        merge = $('.merge').prop('checked');
-					app.useComma = $('.comma').prop('checked');
-					app.createViewResults(app._lastRecords, split, merge, splitMeetings);
+                    app.useComma = $('.comma').prop('checked');
+					app.createViewResults(app._lastRecords);
                 }, 200))
 				.on('change', '#monthSelect', function() {
-					resultsArray =[];
-					numUsersFetchedData = 0;
-					usersByFeature ={};
-					app.getUsers(app.runAll);
+                    resultArray = [];
+			        usersByFeature = {};
+                    numUsersFetchedData = 0;
+                	app.getUsers(app.run);
 				})
 				.on('dblclick', '.featRows', function(event){
 					app.showFeatureUsers(event.target);
 				});	
-			app.run();
+			app.run(false, this);
         });
-    </script>
+	</script>
 </head>
 <body>
     <div class="app">
@@ -841,7 +713,7 @@
 				<option value="2020" >2020</option>
 			</select>
 			<select id = "monthSelect" class="form-control input-sm" style="width: 200px; display: inline-block;">
-				<option value="0" selected="selected">January</option>
+				<option value="0" >January</option>
 				<option value="1" >February</option>
 				<option value="2" >March</option>
 				<option value="3" >April</option>
@@ -854,19 +726,10 @@
 				<option value="10" >November</option>
 				<option value="11" >December</option>
             </select>
-            <label class="checkbox-inline" >
-                <input type="checkbox" class="split" value="true" />Split by Planet
-            </label>
-            <label class="checkbox-inline" title="Yellow Team => Solaris, Purple Team => Cadia">
-                <input type="checkbox" class="merge" value="true" checked="checked"/>Merge old teams
-            </label>
-			<label class="checkbox-inline">
-                <input type="checkbox" class="splitMeetings" value="true"/>Split Meetings
-            </label>
             <label class="checkbox-inline">
                 <input type="checkbox" class="comma" value="true" checked="checked" />Use comma for decimals
             </label>
-			<a href="#" class="export btn btn-default"><i class="glyphicon glyphicon-list"></i>Export to CSV</a>
+			<a href="#" class="export btn btn-default"><i class="glyphicon glyphicon-list"></i> Export to CSV</a>
         </div>
         <hr />
         <div class="output"></div>
