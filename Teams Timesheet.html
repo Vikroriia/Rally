@@ -54,15 +54,14 @@
     <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0/sdk.js"></script>
     <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 	<script type="text/javascript" src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
-	<script type="text/javascript">
-		Date.prototype.addDays = function (days) {
+    <script type="text/javascript">
+        Date.prototype.addDays = function (days) {
             var dat = new Date(this.valueOf());
             dat.setDate(dat.getDate() + days);
             return dat;
         };
-
+        
         var resultArray = [],
-			usersByFeature = {},
             numUsersFetchedData = 0;
 
 		var Rally = Rally,
@@ -83,7 +82,7 @@
                                     model: 'timeentryitem',
                                     autoLoad: true,
                                     listeners: { load: this._onItemsLoaded, scope: this },
-                                    fetch: ['User', 'UserName', 'FirstName', 'LastName', 'DisplayName', 'Department', 'Project', 'TeamMembers', 'ShortDisplayName', 'WeekStartDate', 'Values', 'WorkProduct', 'WorkProductDisplayString', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
+                                    fetch: ['User', 'UserName', 'FirstName', 'LastName', 'DisplayName', 'Department', 'ShortDisplayName', 'Project', 'ProjectDisplayString', 'WeekStartDate', 'Values', 'WorkProduct', 'WorkProductDisplayString', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
                                     filters: [
                                         {
                                             property: 'WeekStartDate',
@@ -98,8 +97,7 @@
                                     ],
                                     orderBy: 'WeekStartDate',
                                     context: {
-                                        project: '/project/' + project.id,
-                                        projectScopeDown: false,
+                                        projectScopeDown: true,
                                         projectScopeUp: false
                                     },
                                     pageSize: 5000
@@ -113,16 +111,16 @@
                                 });
                                 var that = this;
                                 $.when.apply($, data.filter(function(entry) {		
-									return entry.WorkProduct._type === 'Defect';									
+                                    return entry.WorkProduct._type === 'Defect';									
                                 }).map(function(entry) {
                                     return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
                                         if (values.length) {
                                             var story = values[0].data;
-                                            entry.WorkProduct.Feature = story.Feature;
-                                            entry.WorkProductDisplayString = entry.WorkProduct.Feature
-                                                                                 ? entry.WorkProductDisplayString
-                                                                                 : story.FormattedID + ': ' + story.Name;
-                                            //entry.Project.TeamMembers = story.TeamMembers;
+                                            entry.Project = story.ProjectDisplayName;
+                                            //entry.WorkProduct.Feature = story.Feature;
+                                           /*  entry.WorkProductDisplayString = entry.WorkProduct.Feature
+                                                                                ? entry.WorkProductDisplayString
+                                                                                : story.FormattedID + ': ' + story.Name; */
                                         }
                                     });
                                 }, this)).then(function(parameters) {
@@ -150,7 +148,6 @@
                                         fetch: ['Feature', 'FormattedID', 'Name'],
                                         filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
                                         context: {
-                                            project: '/project/' + project.id,
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
@@ -178,7 +175,6 @@
                                         fetch: ['DateVal', 'Hours'],
                                         filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
                                         context: {
-                                            project: '/project/' + project.id,
                                             projectScopeDown: true,
                                             projectScopeUp: false
                                         },
@@ -201,11 +197,11 @@
                                             load: function(store, values) {
                                                 if (values.length) {
                                                     var story = values[0].data;
-                                                    entry.WorkProduct.Feature = story.Feature;
-                                                    entry.WorkProductDisplayString = entry.WorkProduct.Feature
+                                                    entry.Project = story.ProjectDisplayName;
+                                                    //entry.WorkProduct.Feature = story.Feature;
+                                                    /* entry.WorkProductDisplayString = entry.WorkProduct.Feature
                                                                                         ? entry.WorkProductDisplayString
-                                                                                        : story.FormattedID + ': ' + story.Name;
-                                                    //entry.Project.TeamMembers = story.TeamMembers;
+                                                                                        : story.FormattedID + ': ' + story.Name; */
                                                 }
                                                 return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
                                             },
@@ -214,7 +210,6 @@
                                         fetch: ['Feature', 'FormattedID', 'Name'],
                                         filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
                                         context: {
-                                            project: '/project/' + project.id,
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
@@ -237,7 +232,10 @@
                                     autoLoad: true,
                                     listeners: {
                                         load: function(store, values) {
-                                            entry.Values = values.map(function(v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            entry.Values = values.map(function(v) { 
+                                                console.log(v.data.DateVal, v.data.Hours);
+                                                return { DateVal: v.data.DateVal, Hours: v.data.Hours }; 
+                                            });
                                             return timeEntries.length - 1 > index ? this._loadValues(timeEntries, ++index) : this._onItemValueLoaded(timeEntries);
                                         },
                                         scope: this
@@ -245,7 +243,6 @@
                                     fetch: ['DateVal', 'Hours'],
                                     filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
                                     context: {
-                                        project: '/project/' + project.id,
                                         projectScopeDown: true,
                                         projectScopeUp: true
                                     },
@@ -254,30 +251,31 @@
                             },
 
                             _onItemValueLoaded: function(entries) {
-                                var getStoryOrFeature = function(item) {
-									    return item.WorkProduct.Feature
-											? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
-											: item.WorkProductDisplayString;
+                                var /* getStoryOrFeature = function(item) {
+                                        return item.WorkProduct.Feature
+                                            ? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
+                                            : item.WorkProductDisplayString;
                                     },
-                                    features = {},
+                                    features = {}, */
                                     records = [];
 
                                 entries.forEach(function(entry) {
-                                    var feature = getStoryOrFeature(entry);
-                                    features[feature] = features[feature] || {};
+                                    //var feature = getStoryOrFeature(entry);
+                                    //features[feature] = features[feature] || {};
                                     
                                     entry.Values.forEach(function(value) {
                                         records.push({
                                             User: entry.User,
-                                            Team: project.name,
-                                            Feature: feature,
+                                            Team: entry.Project,
+                                            //Feature: feature,
                                             ShortDate: self.formatDate(value.DateVal),
                                             Hours: value.Hours
                                         });
+                                        console.log(records);
                                     });
                                 }, this);
                                 return callback(records);
-                            }              
+                            }     
                         };
 
                         app.launch();
@@ -368,108 +366,102 @@
                     $('.app').show();
                     $('.output').empty();
                 },
-
+				
+				getWeekStart: function(d) {
+                    d = new Date(d);
+                    var day = d.getDay(),
+                        diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                    return new Date(d.setDate(diff));
+                },  
+				
 				createViewResults: function(records) {
-				if(!!records){
-					this._lastRecords = records;
-					$('output').remove();
-					$('.app').show();
-					$('.output').empty();
-					$('.comma').closest('.checkbox-inline').show();
-					$('.export').show();
+                    if(!!records){
+                        this._lastRecords = records;
+                        $('output').remove();
+                        $('.app').show();
+                        $('.output').empty();
+                        $('.comma').closest('.checkbox-inline').show();
+                        $('.export').show();
 
-					var storeByDate = {},
-						dates = [],
-						datesForView = [],
-						daysOfWeek =[],
-						features = [];
+                        var usersByDate = {},
+                            dates = [],
+                            datesForView = [],
+                            daysOfWeek =[],
+                            users = [];
 
-					records.sort(function(a, b) { return a.DateVal - b.DateVal; });
+                        records.sort(function(a, b) { return a.DateVal - b.DateVal; });
+                        console.log(records);
+                        var date = this.getMonthStartDate();
+                        var endDate = this.getMonthEndDate(date);
 
-					var date = this.getMonthStartDate();
-					var endDate = this.getMonthEndDate(date);
+                        while (date <= endDate) {
+                            dates.push(this.formatDate(date));
+                            datesForView.push(date.getDate());
+                            daysOfWeek.push(date.getDay());
+                            date = date.addDays(1);
+                        }
 
-					while (date <= endDate) {
-						dates.push(this.formatDate(date));
-						datesForView.push(date.getDate());
-						daysOfWeek.push(date.getDay());
-						date = date.addDays(1);
-					}
-					var uniqFeature = {};
-					records.forEach(function(r) {
-						if (!storeByDate[r.ShortDate]) {
-							storeByDate[r.ShortDate] = {};
-						}
-						var uniq = {},
-							feat = r.Feature;
-                            user = r.User.LastName ? r.User.LastName + ' ' + r.User.FirstName : r.User.DisplayName || r.User.UserName;
-						feat = uniqFeature[feat.toLowerCase()] ? uniqFeature[feat.toLowerCase()] : uniqFeature[feat.toLowerCase()] = feat;
-						if (!features[feat]) {
-							features[feat] = true;
-							features.push(feat);
-						}
-						if (!storeByDate[r.ShortDate][feat]) {
-							storeByDate[r.ShortDate][feat] = [];
-						}
-						if (!usersByFeature[feat]) {
-							usersByFeature[feat] = {};
-						}
-						if (!usersByFeature[feat][r.ShortDate]) {
-							usersByFeature[feat][r.ShortDate] = {};
-						}
-						if(!usersByFeature[feat][r.ShortDate][user]) {
-						usersByFeature[feat][r.ShortDate][user] = [];
-						}
-						storeByDate[r.ShortDate][feat].push(r.Hours);
-						usersByFeature[feat][r.ShortDate][user].push(r.Hours); 
-					});
-					
-					var table,
-						tr,
-						monthFeatures = [],
-						feature,
-						i,
-						j,
-						hours,
-						total,
-						tbody,
-						sumHours,
-						monthHours;
+                        records.forEach(function(r) {
+                            if (!usersByDate[r.ShortDate]) {
+							    usersByDate[r.ShortDate] = {};
+						    }
+                            var us = r.User.LastName ? r.User.LastName + ' ' + r.User.FirstName : r.User.DisplayName || r.User.UserName;
+                            if (!users[us]) {
+                                users[us] = true;
+							    users.push(us);
+                            }
+                            if (!usersByDate[r.ShortDate][us]) {
+                                usersByDate[r.ShortDate][us] = [];
+                            }
+                            usersByDate[r.ShortDate][us].push(r.Hours);
+                        });
+
+                        var table,
+                            tr,
+                            monthUsers = [],
+                            user,
+                            i,
+                            j,
+                            hours,
+                            total,
+                            tbody,
+                            sumHours,
+                            monthHours;
 
 						table = $('<table>', { 'class': 'table  table-hover' });
 						tr = $('<tr class="info">');
-						tr.append('<th>Feature / User story</th>');
+						tr.append('<th>User</th>');
 
-						for (i = 0; i <= dates.length; i++) {
+                        for (i = 0; i <= dates.length; i++) {
 							if (i < dates.length){
 								if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
 								else tr.append('<th>' + datesForView[i] + '</th>');
 							}
 							else tr.append('<th>' + "Total" + '</th>');
-						}
-
-						table.append($('<thead>').html(tr));
-						table.append(tbody = $('<tbody>'));
-						
-						monthFeatures = features.filter(function(f) {
+                        }
+                        
+                        table.append($('<thead>').html(tr));
+                        table.append(tbody = $('<tbody>'));
+                            
+                        monthUsers = users.filter(function(u) {
 							for (i = 0; i < dates.length; i++) {
-								if (storeByDate[dates[i]] && storeByDate[dates[i]][f]) {
+								if (usersByDate[dates[i]] && usersByDate[dates[i]][u]) {
 									return true;
 								}
 							}
 							return false;
 						});
-                        monthFeatures.sort();
+                        monthUsers.sort();
 
-						for (j = 0; j < monthFeatures.length; j++) {
+                        for (j = 0; j < monthUsers.length; j++) {
 							monthHours = 0;
-							feature = monthFeatures[j];
+							user = monthUsers[j];
 							tr = $('<tr>');
-							tr.append('<th class = featRows>' + feature + '</th>');
+							tr.append('<th class = featRows>' + user + '</th>');
 							for (i = 0; i < dates.length; i++) {
 								sumHours = 0;
-								if (storeByDate[dates[i]]) {
-									hours = storeByDate[dates[i]][feature];
+								if (usersByDate[dates[i]]) {
+									hours = usersByDate[dates[i]][user];
 									sumHours = this.sumHours(hours);
 								}
 								if ((daysOfWeek[i]==6) || (daysOfWeek[i]==0)) tr.append('<td class = weekends>' + this.hoursToString(sumHours) + '</td>');
@@ -480,41 +472,40 @@
 							tbody.append(tr);
 						}
 						$('.output').append(table).append('<br />');
-					}
+                    }
                 },
 
                 useComma: true,
 
                 hoursToString: function(hours) {
                     return this.useComma
-                               ? hours ? this.round(hours).toString().replace('.', ',') : ''
-                               : this.round(hours) || '';
+                            ? hours ? this.round(hours).toString().replace('.', ',') : ''
+                            : this.round(hours) || '';
                 },
 
                 round: function(value) {
                     return Number(Math.round(value + 'e' + 2) + 'e-' + 2);
                 },
-				
+                
                 fetchAllData: function(user, projects, records) {
                     if (!projects.length) {
                         return null;
                     }	
                     var self = this;
-                    
                     $.when.apply($, projects.map(function (project) {
 						var d = $.Deferred();
-                        self.fetchDataFromRally(user, project, function(records) {
-                            console.log(records);
+                        this.fetchDataFromRally(user, project.name, function(records) {
                             d.resolve();
                         });
                         return d.promise();
                     }, this)).then(function() {
-						for(var i = 0; i < results.length; i++)
+						for(var i = 0; i < records.length; i++)
 						{
 							resultsArray = resultsArray.concat(results[i]);
 						}
 						numUsersFetchedData++;
                     });
+                       
                 },
 
                 run: function(usersArray, that) {
@@ -527,21 +518,24 @@
                     this.useComma = $('.comma').prop('checked');
                     
                     Rally.onReady(function () {
-                        if(!!usersArray) {
-                            var loadAll = function (projects) {
+                        var loadAll = function (projects) {
                             if (projects.length) {
-                                $('.app').hide();
-								usersArray.forEach(function(user){
-									self.fetchAllData(user, projects, []);
-								});
-								var intervalID = setInterval(function () {
-									if (numUsersFetchedData == usersArray.length) {
-										clearInterval(intervalID);
-										self.createViewResults(resultsArray);
-									}
-								}, 500 );
+                                if(!!usersArray) {
+                                    $('.app').hide();
+                                    usersArray.forEach(function(user) {
+                                        self.fetchAllData(user, projects, []);
+                                    });
+                                            
+                                    var intervalID = setInterval(function () {
+                                        if (numUsersFetchedData == usersArray.length) {
+                                            clearInterval(intervalID);
+                                            self.createViewResults(resultArray);
+                                        }
+                                    }, 500 );
+                                }
                             }
                         };
+                        
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
                         if (stored) {
                             loadAll(JSON.parse(stored));
@@ -566,11 +560,10 @@
                             },
                             pageSize: 500
                         });
-                        }
                     });
                 },
 
-				getUsers: function(callback) {
+                getUsers: function(callback) {
 					var that = this;	
                     Rally.onReady(function() {
                         Ext.create('Rally.data.wsapi.Store', {
@@ -590,7 +583,7 @@
                                 },
                                 scope: this
                             },
-                            fetch: ['UserName', 'TeamMemberships', 'Department', '_refObjectUUID'],
+                            fetch: ['UserName', 'Department', '_refObjectUUID'],
                             filters: [
                                 { property: 'Department', operator: '=', value: 'Arcadia' }
                             ],
@@ -602,10 +595,10 @@
                         });
                     });
                 }				
-			};
+            };
 
-		$(document).ready(function () {
-			$('.comma').closest('.checkbox-inline').hide();
+        $(document).ready(function () {
+            $('.comma').closest('.checkbox-inline').hide();
 			$('.export').hide();
             
             $(document)
@@ -615,12 +608,11 @@
                 })
 				.on('click', '.reload', function() {
                     resultArray = [];
-			        usersByFeature = {};
                     numUsersFetchedData = 0;
                 	app.getUsers(app.run);
                 })
                 .on('click', '.export', function(event) {
-                    app.exportTableToCSV.apply(this, [$('table'), $("#monthSelect :selected").text()+'Features.csv']);
+                    app.exportTableToCSV.apply(this, [$('table'), $("#monthSelect :selected").text()+'Teams.csv']);
                 })
                 .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
                     app.useComma = $('.comma').prop('checked');
@@ -628,13 +620,12 @@
                 }, 200))
 				.on('change', '#monthSelect', function() {
                     resultArray = [];
-			        usersByFeature = {};
                     numUsersFetchedData = 0;
                 	app.getUsers(app.run);
-				})
+				});	
 			app.run(false, this);
         });
-	</script>
+    </script>
 </head>
 <body>
     <div class="app">
@@ -674,8 +665,7 @@
 			<a href="#" class="export btn btn-default"><i class="glyphicon glyphicon-list"></i> Export to CSV</a>
         </div>
         <hr />
-        <div class="output"></div>
-		<div class="usersByFeatureDialog"></div> 	
+        <div class="output"></div>	
     </div>
 </body>
 </html>

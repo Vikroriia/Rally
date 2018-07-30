@@ -490,10 +490,10 @@
 							usersByFeature[feat] = {};
 						}
 						if (!usersByFeature[feat][r.ShortDate]) {
-							usersByFeature[feat][r.ShortDate] = {};
+						    usersByFeature[feat][r.ShortDate] = {};
 						}
-						if(!usersByFeature[feat][r.ShortDate][user]) {
-						usersByFeature[feat][r.ShortDate][user] = [];
+						if (!usersByFeature[feat][r.ShortDate][user]) {
+						    usersByFeature[feat][r.ShortDate][user] = [];
 						}
 						storeByDate[r.ShortDate][feat].push(r.Hours);
 						usersByFeature[feat][r.ShortDate][user].push(r.Hours); 
