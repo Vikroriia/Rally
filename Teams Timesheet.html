@@ -459,20 +459,6 @@
                                 tr.append('<td class = beige>' + this.hoursToString(monthHours) + '</td>');
                                 tbody.append(tr);
                             }
-                            tr = $('<tr>');
-                            tr.append('<th>Total</th>');
-                            for (i = 0; i < dates.length; i++) {
-                                dayHours = 0;
-                                if (usersByTeam[teamName[teams]][dates[i]]) {
-                                    hours = usersByTeam[teamName[teams]][dates[i]][user];
-                                    sumHours = this.sumHours(hours);
-                                    console.log(sumHours);
-                                    dayHours += sumHours;
-                                }
-                                tr.append('<td class = beige>' + this.hoursToString(dayHours) + '</td>');
-                            }
-                            table.append(tr);
-                            
                             teams++;
                             $('.output').append(table).append('<br />');
                         }
