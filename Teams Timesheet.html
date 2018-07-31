@@ -383,7 +383,7 @@
                             if (!usersByTeam[r.Team][r.ShortDate]) {
 							    usersByTeam[r.Team][r.ShortDate] = {};
 						    }
-                            var us = r.User.LastName ? r.User.LastName + ' ' + r.User.FirstName : r.User.DisplayName || r.User.UserName;
+                            var us = r.User.LastName ? r.User.FirstName + ' ' + r.User.LastName : r.User.DisplayName || r.User.UserName;
                             if (!users[us]) {
                                 users[us] = true;
 							    users.push(us);
@@ -406,16 +406,20 @@
                             hours,
                             total,
                             tbody,
-                            sumHours;
+                            sumHours, // total
+                            monthHours;
                             
                         while (teams < teamslength) {
                             table = $('<table>', { 'class': 'table  table-hover' });
                             tr = $('<tr class="info">');
                             tr.append('<th>' + teamName[teams] + '</th>');
 
-                            for (i = 0; i < dates.length; i++) {
-                                if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
-                                else tr.append('<th>' + datesForView[i] + '</th>');
+                            for (i = 0; i <= dates.length; i++) {
+                                if(i < dates.length){
+                                    if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
+                                    else tr.append('<th>' + datesForView[i] + '</th>');
+                                }
+                                else tr.append('<th>' + "Total" + '</th>'); //total
                             }
                             
                             table.append($('<thead>').html(tr));
@@ -432,6 +436,7 @@
                             monthUsers.sort();
 
                             for (j = 0; j < monthUsers.length; j++) {
+                                monthHours = 0;  //total
                                 user = monthUsers[j];
                                 tr = $('<tr>');
                                 tr.append('<th class = featRows>' + user + '</th>');
@@ -443,13 +448,14 @@
                                     }
                                     if ((daysOfWeek[i]==6) || (daysOfWeek[i]==0)) tr.append('<td class = weekends>' + this.hoursToString(sumHours) + '</td>');
                                     else tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
+                                    monthHours += sumHours; //total
                                 }
+                                tr.append('<td class= beige>' + this.hoursToString(monthHours) + '</td>'); //total
                                 tbody.append(tr);
                             }
                             teams++;
                             $('.output').append(table).append('<br />');
                         }
-                        console.log('END');
                     }
                 },
 
