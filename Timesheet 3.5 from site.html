@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Personal Timesheet 3.5</title>
+    <style>
+        th {
+            text-align: left;
+            font-weight: normal;
+        }
+        th:first-child {
+            width: 600px;
+        }
+        thead th,
+        tr:last-child > th {
+            font-weight: bold;
+        }
+        
+        tr.info {
+            cursor: pointer
+        }
+        tr.info:hover {
+            background-color: #aedcf4;
+        }
+        .settings {
+            text-align: center;
+        }
+        .output, body {
+            overflow: auto !important;
+        }
+        output {
+            width: auto;
+            overflow: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .noActive {
+            color: #adadad;
+            font-style: italic; 
+        }
+    </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0/sdk.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <!-- ReSharper disable once NativeTypePrototypeExtending -->
+    <script type="text/javascript">
+        Date.prototype.addDays = function (days) {
+            var dat = new Date(this.valueOf());
+            dat.setDate(dat.getDate() + days);
+            return dat;
+        };
+        var Rally = Rally,
+            Ext = Ext,
+            app = {
+                fetchDataFromRally: function(user, date, project, callback) {
+                    var self = this;
+                    Rally.onReady(function() {
+                        var app = {
+                            fetch: function(load) {
+                                var d = $.Deferred();
+                                load(d.resolve.bind(d), d.reject.bind(d));
+                                return d.promise();
+                            },
+                            launch: function() {
+                                Ext.create('Rally.data.wsapi.Store', {
+                                    model: 'timeentryitem',
+                                    autoLoad: true,
+                                    listeners: { load: this._onItemsLoaded, scope: this },
+                                    fetch: ['TaskDisplayString', 'ProjectDisplayString', 'WorkProductDisplayString', 'WeekStartDate', 'Values', 'Task', 'WorkProduct', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
+                                    filters: [
+                                        {
+                                            property: 'WeekStartDate',
+                                            operator: '>',
+                                            value: self.getRangeStartDate(date)
+                                        },
+                                        {
+                                            property: 'User',
+                                            operator: '=',
+                                            value: user
+                                        }
+                                    ],
+                                    orderBy: 'WeekStartDate',
+                                    context: {
+                                        project: '/project/' + project,
+                                        projectScopeDown: false,
+                                        projectScopeUp: false
+                                    },
+                                    pageSize: 200
+                                });
+                            },
+                            _onItemsLoaded: function(store, data) {
+                                var d = self.getRangeEndDate(self.dateStr);
+                                data = data.map(function(v) { return v.data; }).filter(function(e) {
+                                    return e.WeekStartDate < d && !!e.WorkProduct;
+                                });
+                                var that = this;
+                                $.when.apply($, data.filter(function(entry) {
+                                    return entry.WorkProduct == null || entry.WorkProduct._type === 'Defect';
+                                }).map(function(entry) {
+                                    return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
+                                        self.log('Loading feature or story for ' + entry.WorkProductDisplayString, values);
+                                        if (values.length) {
+                                            var story = values[0].data;
+                                            entry.WorkProduct.Feature = story.Feature;
+                                            entry.WorkProductDisplayString = entry.WorkProduct.Feature
+                                                                                 ? entry.WorkProductDisplayString
+                                                                                 : story.FormattedID + ': ' + story.Name;
+                                        }
+                                    });
+                                }, this)).then(function(parameters) {
+                                    return $.when.apply($, data.map(function(entry) {
+                                        return that.fetch(that._loadValuesPromise(entry)).then(function (values) {
+                                            self.log('Loading hours for ' + (entry.TaskDisplayString || entry.WorkProductDisplayString), values);
+                                            entry.Values = values.map(function (v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                        });
+                                    }, that));
+                                }).then(this._onItemValueLoaded.bind(this, data));
+                            },
+                            _loadFeaturesForDefectsPromise: function (entry) {
+                                return function(resolve, reject) {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'hierarchicalrequirement',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function (store, values) {
+                                                resolve(values);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['Feature', 'FormattedID', 'Name'],
+                                        filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
+                                        context: {
+                                            project: '/project/' + project,
+                                            projectScopeDown: false,
+                                            projectScopeUp: false
+                                        },
+                                        pageSize: 200
+                                    });
+                                };
+                            },
+                            _loadValuesPromise: function (entry) {
+                                return function(resolve, reject) {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'timeentryvalue',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function (store, values) {
+                                                resolve(values);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['DateVal', 'Hours'],
+                                        filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
+                                        context: {
+                                            project: '/project/' + project,
+                                            projectScopeDown: false,
+                                            projectScopeUp: false
+                                        },
+                                        pageSize: 200
+                                    });
+                                };
+                            },
+                            _loadFeaturesForDefects: function(timeEntries, index, callback) {
+                                index = index || 0;
+                                if (timeEntries.length <= index) {
+                                    return callback(timeEntries);
+                                }
+                                var entry = timeEntries[index];
+                                if (entry.WorkProduct._type === 'Defect') {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'hierarchicalrequirement',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function(store, values) {
+                                                self.log('Loading feature or story for ' + entry.WorkProductDisplayString, values);
+                                                if (values.length) {
+                                                    var story = values[0].data;
+                                                    entry.WorkProduct.Feature = story.Feature;
+                                                    entry.WorkProductDisplayString = entry.WorkProduct.Feature
+                                                                                         ? entry.WorkProductDisplayString
+                                                                                         : story.FormattedID + ': ' + story.Name;
+                                                }
+                                                return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['Feature', 'FormattedID', 'Name'],
+                                        filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
+                                        context: {
+                                            project: '/project/' + project,
+                                            projectScopeDown: false,
+                                            projectScopeUp: false
+                                        },
+                                        pageSize: 200
+                                    });
+                                } else {
+                                    return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
+                                }
+                            },
+                            _loadValues: function(timeEntries, index) {
+                                index = index || 0;
+                                if (timeEntries.length <= index) {
+                                    return this._onItemValueLoaded(timeEntries);
+                                }
+                                var entry = timeEntries[index];
+                                Ext.create('Rally.data.wsapi.Store', {
+                                    model: 'timeentryvalue',
+                                    autoLoad: true,
+                                    listeners: {
+                                        load: function(store, values) {
+                                            self.log('Loading hours for ' + (entry.TaskDisplayString || entry.WorkProductDisplayString), values);
+                                            entry.Values = values.map(function(v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            return timeEntries.length - 1 > index ? this._loadValues(timeEntries, ++index) : this._onItemValueLoaded(timeEntries);
+                                        },
+                                        scope: this
+                                    },
+                                    fetch: ['DateVal', 'Hours'],
+                                    filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
+                                    context: {
+                                        project: '/project/' + project,
+                                        projectScopeDown: false,
+                                        projectScopeUp: false
+                                    },
+                                    pageSize: 200
+                                });
+                            },
+                            _onItemValueLoaded: function(entries) {
+                                var getStoryOrFeature = function(item) {
+                                        return item.WorkProduct.Feature
+                                                   ? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
+                                                   : item.WorkProductDisplayString;
+                                    },
+                                    features = {},
+                                    records = [];
+                                entries.forEach(function(entry) {
+                                    var feature = getStoryOrFeature(entry);
+                                    features[feature] = features[feature] || {};
+                                    entry.Values.forEach(function(value) {
+                                        records.push({
+                                            Task: entry.TaskDisplayString,
+                                            Feature: feature,
+                                            ShortDate: self.formatDate(value.DateVal),
+                                            Hours: value.Hours
+                                        });
+                                    });
+                                }, this);
+                                return callback(records);
+                            }
+                        };
+                        app.launch();
+                    });
+                },
+                log: function(text) {
+                    var out = $('output');
+                    if (!out.length) {
+                        out = $('<output>').appendTo('body');
+                        out.height($(window).height() - 50);
+                    }
+                    out.append('<p>' + text + '</p>');
+                    out.animate({ scrollTop: out.height() }, "slow");
+                },
+                sumHours: function(hours) {
+                    hours = hours || [];
+                    return hours.reduce(function(prev, current) {
+                        return prev + Number(current);
+                    }, 0);
+                },
+                formatDate: function(d) {
+                    return this.addZero(d.getDate()) + "." + this.addZero(d.getMonth() + 1) + "." + d.getFullYear();
+                },
+                parseDate: function(d) {
+                    d = d.split('.');
+                    return new Date(Number(d[2]), Number(d[1] - 1), d[0]);
+                },
+                addZero: function(value) {
+                    return value <= 9 ? '0' + value : value;
+                },
+                getRangeStartDate: function(d) {
+                    var date = new Date(Date.parse(d));
+                    date = date > new Date() ? new Date() : date;
+                    date = date.addDays(-2);
+                    return this.getWeekStart(new Date(date.getFullYear(), date.getMonth(), 1)).addDays(-1);
+                },
+                getRangeEndDate: function(d) {
+                    var date = this.getRangeStartDate(d);
+                    return this.getWeekEnd(date.addDays(35));
+                },
+                getWeekStart: function(d) {
+                    d = new Date(d);
+                    var day = d.getDay(),
+                        diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                    return new Date(d.setDate(diff));
+                },
+                getWeekEnd: function(d) {
+                    d = new Date(d);
+                    var day = d.getDay();
+                    return d.addDays(7 - day);
+                },
+                createView: function(records, activeUsersOnly) {
+                    this._lastRecords = records;
+                  
+                    $('output').remove();
+                    $('.app').show();
+                    $('.output').empty();
+                    var storeByDate = {},
+                        dates = [],
+                        features = [],
+                        projects = [];
+                    records.sort(function(a, b) { return a.DateVal - b.DateVal; });
+                    var date = this.getRangeStartDate(this.dateStr).addDays(1);
+                    var endDate = this.getRangeEndDate(this.dateStr);
+                    endDate = endDate > new Date() ? this.getWeekEnd(new Date()) : endDate;
+                    while (date <= endDate) {
+                        dates.push(this.formatDate(date));
+                        date = date.addDays(1);
+                    }
+                    var uniqFeature = {};
+                    records.forEach(function(r) {
+                        if (!storeByDate[r.ShortDate]) {
+                            storeByDate[r.ShortDate] = {};
+                        }
+                        var uniq = {},
+                            feat = r.Feature;
+                        feat = uniqFeature[feat.toLowerCase()] ? uniqFeature[feat.toLowerCase()] : uniqFeature[feat.toLowerCase()] = feat;
+                        if (!features[feat]) {
+                            features[feat] = true;
+                            features.push(feat);
+                        }
+                        if (!projects[r.team]) {
+                            projects[r.team] = true;
+                            projects.push(r.team);
+                        }
+                        if (!storeByDate[r.ShortDate][feat]) {
+                            storeByDate[r.ShortDate][feat] = [];
+                        }
+                        if (!storeByDate[r.ShortDate][feat + r.team]) {
+                            storeByDate[r.ShortDate][feat + r.team] = [];
+                        }
+                        storeByDate[r.ShortDate][feat].push(r.Hours);
+                        storeByDate[r.ShortDate][feat + r.team].push(r.Hours);
+                    });
+                    
+                    var shift = 0,
+                        table,
+                        tr,
+                        weekFeatures = [],
+                        feature,
+                        i,
+                        j,
+                        hours,
+                        total,
+                        tbody,
+                        sumHours,
+                        project;
+                    while (shift < dates.length) {
+                        table = $('<table>', { 'class': 'table  table-hover' });
+                        tr = $('<tr class="info">');
+                        tr.append('<th>Feature / User story</th>');
+                        for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                            tr.append('<th>' + dates[i] + '</th>');
+                        }
+                        table.append($('<thead>').html(tr));
+                        table.append(tbody = $('<tbody>'));
+                      
+                        weekFeatures = features.filter(function(f) {
+                            for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                                if (storeByDate[dates[i]] && storeByDate[dates[i]][f]) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        });
+                        
+                        weekFeatures.sort();
+                        for (j = 0; j < weekFeatures.length; j++) {
+                            feature = weekFeatures[j];
+                            tr = $('<tr>');
+                            tr.append('<th>' + feature + '</th>');
+                            for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                                sumHours = 0;
+                                if (storeByDate[dates[i]]) {
+                                    hours = storeByDate[dates[i]][feature];
+                                    sumHours = this.sumHours(hours);
+                                }
+                                tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
+                            }
+                            tbody.append(tr);
+                        }
+                        tr = $('<tr>');
+                        tr.append('<th>Total</th>');
+                        for (i = shift; i < shift + 7 && i < dates.length; i++) {
+                            total = 0;
+                            if (storeByDate[dates[i]]) {
+                                for (j = 0; j < weekFeatures.length; j++) {
+                                    feature = weekFeatures[j];
+                                    hours = storeByDate[dates[i]][feature];
+                                    total += this.sumHours(hours);
+                                }
+                            }
+                            tr.append($('<th>', {
+                                'class': total >= 9 
+                                                ? 'danger' : total <= 7 
+                                                                    ? total !== 0 
+                                                                              ? 'success' : '' : 'warning'
+                            }).text(this.hoursToString(total)));
+                        }
+                        table.append(tr);
+                        shift += 7;
+                        $('.output').append(table).append('<br />');
+                    } 
+                },
+                useComma: true,
+                hoursToString: function(hours) {
+                    return this.useComma
+                               ? hours ? this.round(hours).toString().replace('.', ',') : ''
+                               : this.round(hours) || '';
+                },
+                round: function(value) {
+                    return Number(Math.round(value + 'e' + 2) + 'e-' + 2);
+                },
+                addRecords: function(results, records, team) {
+                    records.map(function(r) {
+                        r.team = team;
+                        return r;
+                    }).forEach(function(r) {
+                        results.push(r);
+                    });
+                },
+                fetchAllProjectsAndCreateView: function (user, date, projects, results, activeUsersOnly) {
+                    if (!projects.length) {
+                        return null;
+                    }
+                    var self = this;
+                    self.log('Loading time entries... <b id="progress"></b>');
+                    var projectsLoaded = 0,
+                        step = 100 / projects.length,
+                        $progress = $('#progress');
+                    $.when.apply($, projects.map(function (project) {
+                        var d = $.Deferred();
+                        this.fetchDataFromRally(user, date, project.id, function(records) {
+                            self.addRecords(results, records, project.name);
+                            $progress.text((projectsLoaded = projectsLoaded + step).toFixed(0) + '%');
+                            d.resolve();
+                        });
+                        return d.promise();
+                    }, this)).then(function() {
+                        self.createView(results, activeUsersOnly);
+                    });
+                },
+            
+                run: function(user) {
+                    var self = this,
+                        activeUsersOnly = $('.activeUsersOnly').prop('checked');
+                    this.useComma = $('.comma').prop('checked');
+                    this.dateStr = $('.date').val();
+                                        
+                    Rally.onReady(function () {
+                        var loadAll = function (projects) {
+                            if (projects.length) {
+                                $('.app').hide();
+                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], activeUsersOnly/* , splitMeetings */);
+                            }
+                        };
+                        var stored = localStorage.getItem('rallyProjectsRaw') || false;
+                        if (stored) {
+                            loadAll(JSON.parse(stored));
+                        }
+                        Ext.create('Rally.data.wsapi.Store', {
+                            model: 'project',
+                            autoLoad: true,
+                            listeners: {
+                                load: function (x, projects) {
+                                    projects = projects.map(function(p) {
+                                        return { id: p.data.ObjectID, name: p.data.Name };
+                                    });
+                                    localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
+                                    stored || loadAll(projects);
+                                },
+                                scope: this
+                            },
+                            fetch: ['Name', '_ref'],
+                            context: {
+                                projectScopeDown: true,
+                                projectScopeUp: false
+                            },
+                            pageSize: 200
+                        });
+                    });
+                },
+                runSingle: function () {
+                    this.dateStr = $('.date').val();
+                    $('.app').hide();                        
+                    
+                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, activeUsersOnly) {
+                         this.createView(records, activeUsersOnly); 
+                    }.bind(this));
+                },
+				getUsers: function() {
+                    Rally.onReady(function() {
+                        Ext.create('Rally.data.wsapi.Store', {
+                            model: 'user',
+                            autoLoad: true,
+                            listeners: {
+                                load: function (x, users) {
+                                    var $select = $('select'),
+                                        activeUsersOnly = $('.activeUsersOnly').prop('checked'),
+                                        currentUserName = Rally.environment.getContext().getUser().UserName;
+                                    $select.empty();
+                                    users.sort(function (u, u2) {
+                                        return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
+                                    }).forEach(function (u) {
+                                        var $option = $('<option>', { value: u.data.UserName }).text(u.data.LastName ? u.data.LastName + ' ' + u.data.FirstName : u.data.ShortDisplayName || u.data.UserNam),
+                                            $active = $('<active>');
+                                        if (u.data.Disabled === true || u.data.Deleted === true) { 
+                                            $option.addClass('noActive');
+                                        } else {
+                                            $active = $option;
+                                        }
+                                        if(activeUsersOnly) {
+                                            $select.append($active);
+                                        } else {
+                                            $select.append($option);
+                                        }
+                                        if (u.data.UserName === currentUserName) {
+                                            $select.find('option[selected]').removeAttr('selected');
+                                            $option.attr('selected', 'selected');
+                                        }
+                                    });
+                                },
+                                scope: this
+                            },
+                            fetch: ['UserName', 'TeamMemberships', 'Department', 'DisplayName', 'Role', 'ShortDisplayName', 'FirstName', 'LastName', 'Disabled', 'Deleted'],
+                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' }],
+                            context: {
+                                projectScopeDown: true,
+                                projectScopeUp: false
+                            },
+                            pageSize: 200
+                        });
+                    });
+                },
+            };
+        $(document).ready(function () {
+            $('.date').val(new Date());
+            function getTextNodesIn(node) {
+                var textNodes = [];
+                if (node.nodeType === 3) {
+                    textNodes.push(node);
+                } else {
+                    var children = node.childNodes;
+                    for (var i = 0, len = children.length; i < len; ++i) {
+                        textNodes.push.apply(textNodes, getTextNodesIn(children[i]));
+                    }
+                }
+                return textNodes;
+            }
+            function setSelectionRange(el, start, end) {
+                if (document.createRange && window.getSelection) {
+                    var range = document.createRange();
+                    range.selectNodeContents(el);
+                    var textNodes = getTextNodesIn(el);
+                    var foundStart = false;
+                    var charCount = 0, endCharCount;
+                    for (var i = 0, textNode; (textNode = textNodes[i++]) ;) {
+                        endCharCount = charCount + textNode.length;
+                        if (!foundStart && start >= charCount && (start < endCharCount || (start == endCharCount && i <= textNodes.length))) {
+                            range.setStart(textNode, start - charCount);
+                            foundStart = true;
+                        }
+                        if (foundStart && end <= endCharCount) {
+                            range.setEnd(textNode, end - charCount);
+                            break;
+                        }
+                        charCount = endCharCount;
+                    }
+                    var sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } else if (document.selection && document.body.createTextRange) {
+                    var textRange = document.body.createTextRange();
+                    textRange.moveToElementText(el);
+                    textRange.collapse(true);
+                    textRange.moveEnd('character', end);
+                    textRange.moveStart('character', start);
+                    textRange.select();
+                }
+            }
+            $(document).on('change', 'input[type="checkbox"]', function() {
+                    var $this = $(this);
+                    $this.prop('checked') ? $this.attr('checked', 'checked') : $this.removeAttr('checked');
+                })
+                .on('click', 'button', function() {
+                    var $this = $(this),
+                        $date = $('.date'),
+                        goPast = $this.hasClass('pull-left'),
+                        goForward = $this.hasClass('pull-right'),
+                        date = new Date(Date.parse($date.val())).addDays(goPast ? -30 : goForward ? 30 : 0);
+                    date = date > new Date() ? new Date() : date;
+                    $date.val(date);
+                    app.run($('select').val() || Rally.environment.getContext().getUser().UserName);
+                })
+                .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
+                    var activeUsersOnly = $('.activeUsersOnly').prop('checked');
+                    app.useComma = $('.comma').prop('checked');
+                    app.createView(app._lastRecords, activeUsersOnly);
+                }, 200))
+                .on('change','.activeUsersOnly', setTimeout.bind(null, function() {
+                    var activeUsersOnly = $('.activeUsersOnly').prop('checked');
+                    app.getUsers();
+                    app.createView(app._lastRecords, activeUsersOnly);
+                }, 200))
+                .on('click', 'thead tr.info', function() {
+                    var $tbody = $(this).closest('table').find('tbody');
+                    setSelectionRange($tbody.get(0), 0, $tbody.find('tr:not(:last)').text().length);
+                })
+                .on('change', 'select', function() {
+                    app.run($(this).val());
+                });
+            var activeUsersOnly = $('.activeUsersOnly').prop('checked','checked');
+			app.getUsers();
+			app.run();
+        });
+    </script>
+</head>
+<body>
+    <div class="app">
+        <div class="settings">
+            <input type="hidden" class="date" value=""/>
+            <button class="btn btn-sm btn-block"><i class="glyphicon glyphicon-refresh"></i> Refresh</button>
+            <br/>
+			<select class="form-control input-sm" style="width: 200px; display: inline-block;">
+                <option value="0" disabled="disabled" selected="selected" style="display: none;">Please select team member...</option>
+            </select>
+            &nbsp;&nbsp;
+            <label class="checkbox-inline">
+                <input type="checkbox" class="activeUsersOnly" value="true" checked="checked"/>Active users only
+            </label>
+            <label class="checkbox-inline">
+                <input type="checkbox" class="comma" value="true" checked="checked" />Use comma for decimals
+            </label>
+        </div>
+        <button class="btn pull-left"><i class="glyphicon glyphicon-backward"></i> Past</button>
+        <button class="btn pull-right">Future <i class="glyphicon glyphicon-forward"></i></button>
+        <hr />
+        <div class="output"></div>
+    </div>
+</body>
+</html>
