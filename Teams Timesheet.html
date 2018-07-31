@@ -406,21 +406,16 @@
                             hours,
                             total,
                             tbody,
-                            sumHours,
-                            dayHours,
-                            monthHours;
+                            sumHours;
                             
                         while (teams < teamslength) {
                             table = $('<table>', { 'class': 'table  table-hover' });
                             tr = $('<tr class="info">');
                             tr.append('<th>' + teamName[teams] + '</th>');
 
-                            for (i = 0; i <= dates.length; i++) {
-                                if (i < dates.length){
-                                    if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
-                                    else tr.append('<th>' + datesForView[i] + '</th>');
-                                }
-                                else tr.append('<th>' + "Total" + '</th>');
+                            for (i = 0; i < dates.length; i++) {
+                                if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
+                                else tr.append('<th>' + datesForView[i] + '</th>');
                             }
                             
                             table.append($('<thead>').html(tr));
@@ -437,7 +432,6 @@
                             monthUsers.sort();
 
                             for (j = 0; j < monthUsers.length; j++) {
-                                monthHours = 0;
                                 user = monthUsers[j];
                                 tr = $('<tr>');
                                 tr.append('<th class = featRows>' + user + '</th>');
@@ -449,9 +443,7 @@
                                     }
                                     if ((daysOfWeek[i]==6) || (daysOfWeek[i]==0)) tr.append('<td class = weekends>' + this.hoursToString(sumHours) + '</td>');
                                     else tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
-                                    monthHours += sumHours;
                                 }
-                                tr.append('<td class = beige>' + this.hoursToString(monthHours) + '</td>');
                                 tbody.append(tr);
                             }
                             teams++;
