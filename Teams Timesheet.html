@@ -100,7 +100,7 @@
                                         projectScopeDown: true,
                                         projectScopeUp: false
                                     },
-                                    pageSize: 5000
+                                    pageSize: 200
                                 });
                             },
 
@@ -142,7 +142,7 @@
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
-                                        pageSize: 5000
+                                        pageSize: 200
                                     });
                                 };
                             },
@@ -169,7 +169,7 @@
                                             projectScopeDown: true,
                                             projectScopeUp: false
                                         },
-                                        pageSize: 5000
+                                        pageSize: 200
                                     });
                                 };
                             },
@@ -196,7 +196,7 @@
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
-                                        pageSize: 5000
+                                        pageSize: 200
                                     });
                                 } else {
                                     return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
@@ -228,7 +228,7 @@
                                         projectScopeDown: true,
                                         projectScopeUp: true
                                     },
-                                    pageSize: 5000
+                                    pageSize: 200
                                 });
                             },
 
@@ -487,19 +487,45 @@
                     this.useComma = $('.comma').prop('checked');
                     
                     Rally.onReady(function () {
-                       if(!!usersArray) {
-                            $('.app').hide();
-                            usersArray.forEach(function(user) {
-                                self.fetchAllData(user, []);
-                            });
-                                    
-                            var intervalID = setInterval(function () {
-                                if (numUsersFetchedData == usersArray.length) {
-                                    clearInterval(intervalID);
-                                    self.createViewResults(resultArray);
-                                }
-                            }, 500 );
+                        var loadAll = function (projects) {
+                            if(!!usersArray) {
+                                $('.app').hide();
+                                usersArray.forEach(function(user) {
+                                    self.fetchAllData(user, []);
+                                });
+                                        
+                                var intervalID = setInterval(function () {
+                                    if (numUsersFetchedData == usersArray.length) {
+                                        clearInterval(intervalID);
+                                        self.createViewResults(resultArray);
+                                    }
+                                }, 500 );
+                            }
+                        };
+                        var stored = localStorage.getItem('rallyProjectsRaw') || false;
+                        if (stored) {
+                            loadAll(JSON.parse(stored));
                         }
+                        Ext.create('Rally.data.wsapi.Store', {
+                            model: 'project',
+                            autoLoad: true,
+                            listeners: {
+                                load: function (x, projects) {
+                                    projects = projects.map(function(p) {
+                                        return { id: p.data.ObjectID, name: p.data.Name };
+                                    });
+                                    localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
+                                    stored || loadAll(projects);
+                                },
+                                scope: this
+                            },
+                            fetch: ['Name', '_ref'],
+                            context: {
+                                projectScopeDown: true,
+                                projectScopeUp: false
+                            },
+                            pageSize: 200
+                        });
                     });
                 },
 
