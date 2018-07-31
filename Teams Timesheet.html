@@ -18,7 +18,7 @@
         }
 
         tr.info:hover {
-            background-color: #aedcf4;
+            background-color:  #aedcf4;
         }
 
         .settings {
@@ -48,6 +48,11 @@
 		.weekends  {
 			background-color: #FAF2F0;
 		}
+        .total {
+            background-color:#c6e4f5;
+            font-weight: bold;
+            text-align: right;
+        }
 	</style>
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
@@ -67,7 +72,7 @@
 		var Rally = Rally,
 			Ext = Ext,
 			app = {
-                fetchDataFromRally: function(user, project, callback) {
+                fetchDataFromRally: function(user, callback) {
                     var self = this;
                     Rally.onReady(function() {
                         var app = {
@@ -82,7 +87,7 @@
                                     model: 'timeentryitem',
                                     autoLoad: true,
                                     listeners: { load: this._onItemsLoaded, scope: this },
-                                    fetch: ['User', 'UserName', 'FirstName', 'LastName', 'DisplayName', 'Department', 'ShortDisplayName', 'Project', 'ProjectDisplayString', 'WeekStartDate', 'Values', 'WorkProduct', 'WorkProductDisplayString', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
+                                    fetch: ['User', 'UserName', 'FirstName', 'LastName', 'DisplayName', 'Department', 'ShortDisplayName', 'Project', '_refObjectName', 'WeekStartDate', 'Values', 'WorkProduct', 'WorkProductDisplayString', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
                                     filters: [
                                         {
                                             property: 'WeekStartDate',
@@ -113,16 +118,7 @@
                                 $.when.apply($, data.filter(function(entry) {		
                                     return entry.WorkProduct._type === 'Defect';									
                                 }).map(function(entry) {
-                                    return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
-                                        if (values.length) {
-                                            var story = values[0].data;
-                                            entry.Project = story.ProjectDisplayName;
-                                            //entry.WorkProduct.Feature = story.Feature;
-                                           /*  entry.WorkProductDisplayString = entry.WorkProduct.Feature
-                                                                                ? entry.WorkProductDisplayString
-                                                                                : story.FormattedID + ': ' + story.Name; */
-                                        }
-                                    });
+                                    return this.fetch(this._loadFeaturesForDefectsPromise(entry));
                                 }, this)).then(function(parameters) {
                                     return $.when.apply($, data.map(function(entry) { 
                                         return that.fetch(that._loadValuesPromise(entry)).then(function (values) {
@@ -194,15 +190,7 @@
                                         model: 'hierarchicalrequirement',
                                         autoLoad: true,
                                         listeners: {
-                                            load: function(store, values) {
-                                                if (values.length) {
-                                                    var story = values[0].data;
-                                                    entry.Project = story.ProjectDisplayName;
-                                                    //entry.WorkProduct.Feature = story.Feature;
-                                                    /* entry.WorkProductDisplayString = entry.WorkProduct.Feature
-                                                                                        ? entry.WorkProductDisplayString
-                                                                                        : story.FormattedID + ': ' + story.Name; */
-                                                }
+                                            load: function() {
                                                 return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
                                             },
                                             scope: this
@@ -233,7 +221,6 @@
                                     listeners: {
                                         load: function(store, values) {
                                             entry.Values = values.map(function(v) { 
-                                                console.log(v.data.DateVal, v.data.Hours);
                                                 return { DateVal: v.data.DateVal, Hours: v.data.Hours }; 
                                             });
                                             return timeEntries.length - 1 > index ? this._loadValues(timeEntries, ++index) : this._onItemValueLoaded(timeEntries);
@@ -251,27 +238,17 @@
                             },
 
                             _onItemValueLoaded: function(entries) {
-                                var /* getStoryOrFeature = function(item) {
-                                        return item.WorkProduct.Feature
-                                            ? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
-                                            : item.WorkProductDisplayString;
-                                    },
-                                    features = {}, */
-                                    records = [];
+                                var records = [];
 
                                 entries.forEach(function(entry) {
-                                    //var feature = getStoryOrFeature(entry);
-                                    //features[feature] = features[feature] || {};
                                     
                                     entry.Values.forEach(function(value) {
                                         records.push({
                                             User: entry.User,
-                                            Team: entry.Project,
-                                            //Feature: feature,
+                                            Team: entry.Project._refObjectName,
                                             ShortDate: self.formatDate(value.DateVal),
                                             Hours: value.Hours
                                         });
-                                        console.log(records);
                                     });
                                 }, this);
                                 return callback(records);
@@ -383,17 +360,18 @@
                         $('.comma').closest('.checkbox-inline').show();
                         $('.export').show();
 
-                        var usersByDate = {},
+                        var usersByTeam = {},
                             dates = [],
                             datesForView = [],
                             daysOfWeek =[],
-                            users = [];
+                            users = [],
+                            teamslength = 0,
+                            teamName = [];
 
                         records.sort(function(a, b) { return a.DateVal - b.DateVal; });
-                        console.log(records);
-                        var date = this.getMonthStartDate();
-                        var endDate = this.getMonthEndDate(date);
-
+                        
+                        var date = this.getMonthStartDate(),
+                            endDate = this.getMonthEndDate(date);
                         while (date <= endDate) {
                             dates.push(this.formatDate(date));
                             datesForView.push(date.getDate());
@@ -402,19 +380,26 @@
                         }
 
                         records.forEach(function(r) {
-                            if (!usersByDate[r.ShortDate]) {
-							    usersByDate[r.ShortDate] = {};
+                            if (!usersByTeam[r.Team]) {
+                                usersByTeam[r.Team] = {};
+                                teamslength++;
+                                teamName.push(r.Team);
+						    }
+                            if (!usersByTeam[r.Team][r.ShortDate]) {
+							    usersByTeam[r.Team][r.ShortDate] = {};
 						    }
                             var us = r.User.LastName ? r.User.LastName + ' ' + r.User.FirstName : r.User.DisplayName || r.User.UserName;
                             if (!users[us]) {
                                 users[us] = true;
 							    users.push(us);
                             }
-                            if (!usersByDate[r.ShortDate][us]) {
-                                usersByDate[r.ShortDate][us] = [];
+                            if (!usersByTeam[r.Team][r.ShortDate][us]) {
+                                usersByTeam[r.Team][r.ShortDate][us] = [];
                             }
-                            usersByDate[r.ShortDate][us].push(r.Hours);
+                            usersByTeam[r.Team][r.ShortDate][us].push(r.Hours);
                         });
+
+                        teamName.sort();
 
                         var table,
                             tr,
@@ -422,56 +407,75 @@
                             user,
                             i,
                             j,
+                            teams = 0,
                             hours,
                             total,
                             tbody,
                             sumHours,
+                            dayHours,
                             monthHours;
-
-						table = $('<table>', { 'class': 'table  table-hover' });
-						tr = $('<tr class="info">');
-						tr.append('<th>User</th>');
-
-                        for (i = 0; i <= dates.length; i++) {
-							if (i < dates.length){
-								if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
-								else tr.append('<th>' + datesForView[i] + '</th>');
-							}
-							else tr.append('<th>' + "Total" + '</th>');
-                        }
-                        
-                        table.append($('<thead>').html(tr));
-                        table.append(tbody = $('<tbody>'));
                             
-                        monthUsers = users.filter(function(u) {
-							for (i = 0; i < dates.length; i++) {
-								if (usersByDate[dates[i]] && usersByDate[dates[i]][u]) {
-									return true;
-								}
-							}
-							return false;
-						});
-                        monthUsers.sort();
+                        while (teams < teamslength) {
+                            table = $('<table>', { 'class': 'table  table-hover' });
+                            tr = $('<tr class="info">');
+                            tr.append('<th>' + teamName[teams] + '</th>');
 
-                        for (j = 0; j < monthUsers.length; j++) {
-							monthHours = 0;
-							user = monthUsers[j];
-							tr = $('<tr>');
-							tr.append('<th class = featRows>' + user + '</th>');
-							for (i = 0; i < dates.length; i++) {
-								sumHours = 0;
-								if (usersByDate[dates[i]]) {
-									hours = usersByDate[dates[i]][user];
-									sumHours = this.sumHours(hours);
-								}
-								if ((daysOfWeek[i]==6) || (daysOfWeek[i]==0)) tr.append('<td class = weekends>' + this.hoursToString(sumHours) + '</td>');
-								else tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
-								monthHours += sumHours;
-							}
-							tr.append('<td class= beige>' + this.hoursToString(monthHours) + '</td>');
-							tbody.append(tr);
-						}
-						$('.output').append(table).append('<br />');
+                            for (i = 0; i <= dates.length; i++) {
+                                if (i < dates.length){
+                                    if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
+                                    else tr.append('<th>' + datesForView[i] + '</th>');
+                                }
+                                else tr.append('<th>' + "Total" + '</th>');
+                            }
+                            
+                            table.append($('<thead>').html(tr));
+                            table.append(tbody = $('<tbody>'));
+                                
+                            monthUsers = users.filter(function(u) {
+                                for (i = 0; i < dates.length; i++) {
+                                    if (usersByTeam[teamName[teams]][dates[i]] && usersByTeam[teamName[teams]][dates[i]][u]) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            });
+                            monthUsers.sort();
+
+                            for (j = 0; j < monthUsers.length; j++) {
+                                monthHours = 0;
+                                user = monthUsers[j];
+                                tr = $('<tr>');
+                                tr.append('<th class = featRows>' + user + '</th>');
+                                for (i = 0; i < dates.length; i++) {
+                                    sumHours = 0;
+                                    if (usersByTeam[teamName[teams]][dates[i]]) {
+                                        hours = usersByTeam[teamName[teams]][dates[i]][user];
+                                        sumHours = this.sumHours(hours);
+                                    }
+                                    if ((daysOfWeek[i]==6) || (daysOfWeek[i]==0)) tr.append('<td class = weekends>' + this.hoursToString(sumHours) + '</td>');
+                                    else tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
+                                    monthHours += sumHours;
+                                }
+                                tr.append('<td class = beige>' + this.hoursToString(monthHours) + '</td>');
+                                tbody.append(tr);
+                            }
+                            tr = $('<tr>');
+                            tr.append('<th>Total</th>');
+                            for (i = 0; i < dates.length; i++) {
+                                dayHours = 0;
+                                if (usersByTeam[teamName[teams]][dates[i]]) {
+                                    hours = usersByTeam[teamName[teams]][dates[i]][user];
+                                    sumHours = this.sumHours(hours);
+                                    console.log(sumHours);
+                                    dayHours += sumHours;
+                                }
+                                tr.append('<td class = beige>' + this.hoursToString(dayHours) + '</td>');
+                            }
+                            table.append(tr);
+                            
+                            teams++;
+                            $('.output').append(table).append('<br />');
+                        }
                     }
                 },
 
@@ -487,21 +491,12 @@
                     return Number(Math.round(value + 'e' + 2) + 'e-' + 2);
                 },
                 
-                fetchAllData: function(user, projects, records) {
-                    if (!projects.length) {
-                        return null;
-                    }	
+                fetchAllData: function(user, records) {
                     var self = this;
-                    $.when.apply($, projects.map(function (project) {
-						var d = $.Deferred();
-                        this.fetchDataFromRally(user, project.name, function(records) {
-                            d.resolve();
-                        });
-                        return d.promise();
-                    }, this)).then(function() {
-						for(var i = 0; i < records.length; i++)
+                    self.fetchDataFromRally(user, function(records) {
+                        for(var i = 0; i < records.length; i++)
 						{
-							resultsArray = resultsArray.concat(results[i]);
+							resultArray = resultArray.concat(records[i]);
 						}
 						numUsersFetchedData++;
                     });
@@ -518,48 +513,19 @@
                     this.useComma = $('.comma').prop('checked');
                     
                     Rally.onReady(function () {
-                        var loadAll = function (projects) {
-                            if (projects.length) {
-                                if(!!usersArray) {
-                                    $('.app').hide();
-                                    usersArray.forEach(function(user) {
-                                        self.fetchAllData(user, projects, []);
-                                    });
-                                            
-                                    var intervalID = setInterval(function () {
-                                        if (numUsersFetchedData == usersArray.length) {
-                                            clearInterval(intervalID);
-                                            self.createViewResults(resultArray);
-                                        }
-                                    }, 500 );
+                       if(!!usersArray) {
+                            $('.app').hide();
+                            usersArray.forEach(function(user) {
+                                self.fetchAllData(user, []);
+                            });
+                                    
+                            var intervalID = setInterval(function () {
+                                if (numUsersFetchedData == usersArray.length) {
+                                    clearInterval(intervalID);
+                                    self.createViewResults(resultArray);
                                 }
-                            }
-                        };
-                        
-                        var stored = localStorage.getItem('rallyProjectsRaw') || false;
-                        if (stored) {
-                            loadAll(JSON.parse(stored));
+                            }, 500 );
                         }
-                        Ext.create('Rally.data.wsapi.Store', {
-                            model: 'project',
-                            autoLoad: true,
-                            listeners: {
-                                load: function (x, projects) {
-                                    projects = projects.map(function(p) {
-                                        return { id: p.data.ObjectID, name: p.data.Name };
-                                    });
-                                    localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
-                                    stored || loadAll(projects);
-                                },
-                                scope: this
-                            },
-                            fetch: ['Name', '_ref'],
-                            context: {
-                                projectScopeDown: true,
-                                projectScopeUp: false
-                            },
-                            pageSize: 500
-                        });
                     });
                 },
 
