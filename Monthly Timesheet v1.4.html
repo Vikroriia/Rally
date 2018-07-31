@@ -597,8 +597,7 @@
                                 $('.app').hide();
                                 usersArray.forEach(function(user) {
                                     self.fetchAllData(user, []);
-                                });
-                                        
+                                });   
                                 var intervalID = setInterval(function () {
                                     if (numUsersFetchedData == usersArray.length) {
                                         clearInterval(intervalID);
