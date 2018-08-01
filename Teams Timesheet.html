@@ -90,7 +90,7 @@
                                     orderBy: 'WeekStartDate',
                                     context: {
                                         projectScopeDown: true,
-                                        projectScopeUp: false
+                                        projectScopeUp: true
                                     },
                                     pageSize: 200
                                 });
@@ -122,7 +122,12 @@
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                                resolve(values);
+                                                if (values !== null) {
+                                                    resolve(values);
+                                                } else { 
+                                                    values = [];
+                                                    resolve(values);
+                                                } 
                                             },
                                             scope: this
                                         },
@@ -156,7 +161,7 @@
                                         filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
                                         context: {
                                             projectScopeDown: true,
-                                            projectScopeUp: false
+                                            projectScopeUp: true
                                         },
                                         pageSize: 200
                                     });
@@ -471,7 +476,7 @@
                         }
                     });
                 },
-                
+
                 getUsers: function(callback) {
 					var that = this;	
                     Rally.onReady(function() {
