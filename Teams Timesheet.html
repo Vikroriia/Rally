@@ -7,20 +7,16 @@
             text-align: left;
             font-weight: normal;
         }
-
         th:first-child {
             width: 600px;
         }
-
         thead th
         {
             font-weight: bold;
         }
-
         tr.info:hover {
             background-color:  #aedcf4;
         }
-
         .settings {
             text-align: center;
         }
@@ -30,11 +26,9 @@
 			padding-left: 10px;
 			padding-right: 9px;
 		}
-
         .output, body {
             overflow: auto !important;
         }
-
         output {
             width: auto;
             overflow: hidden;
@@ -63,7 +57,6 @@
         
         var resultArray = [],
             numUsersFetchedData = 0;
-
 		var Rally = Rally,
 			Ext = Ext,
 			app = {
@@ -76,7 +69,6 @@
                                 load(d.resolve.bind(d), d.reject.bind(d));
                                 return d.promise();
                             },
-
                             launch: function() {
                                 Ext.create('Rally.data.wsapi.Store', {
                                     model: 'timeentryitem',
@@ -103,7 +95,6 @@
                                     pageSize: 200
                                 });
                             },
-
                             _onItemsLoaded: function(store, data) {
                                 var d = self.getMonthEndDate(self.getMonthStartDate());
                                 data = data.map(function(v) { return v.data; }).filter(function(e) {
@@ -124,7 +115,6 @@
                                     }, that));
                                 }).then(this._onItemValueLoaded.bind(this, data));
                             },
-
                             _loadFeaturesForDefectsPromise: function (entry) {
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
@@ -146,7 +136,6 @@
                                     });
                                 };
                             },
-
                             _loadValuesPromise: function (entry) {
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
@@ -173,7 +162,6 @@
                                     });
                                 };
                             },
-
                             _loadFeaturesForDefects: function(timeEntries, index, callback) {
                                 index = index || 0;
                                 if (timeEntries.length <= index) {
@@ -202,14 +190,12 @@
                                     return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
                                 }
                             },
-
                             _loadValues: function(timeEntries, index) {
                                 index = index || 0;
                                 if (timeEntries.length <= index) {
                                     return this._onItemValueLoaded(timeEntries);
                                 }
                                 var entry = timeEntries[index];
-
                                 Ext.create('Rally.data.wsapi.Store', {
                                     model: 'timeentryvalue',
                                     autoLoad: true,
@@ -231,10 +217,8 @@
                                     pageSize: 200
                                 });
                             },
-
                             _onItemValueLoaded: function(entries) {
                                 var records = [];
-
                                 entries.forEach(function(entry) {
                                     
                                     entry.Values.forEach(function(value) {
@@ -249,31 +233,25 @@
                                 return callback(records);
                             }     
                         };
-
                         app.launch();
                     });
                 },
-
                 sumHours: function(hours) {
                     hours = hours || [];
                     return hours.reduce(function(prev, current) {
                         return prev + Number(current);
                     }, 0);
                 },
-
                 formatDate: function(d) {
                     return this.addZero(d.getDate()) + "." + this.addZero(d.getMonth() + 1) + "." + d.getFullYear();
                 },
-
                 parseDate: function(d) {
                     d = d.split('.');
                     return new Date(Number(d[2]), Number(d[1] - 1), d[0]);
                 },
-
                 addZero: function(value) {
                     return value <= 9 ? '0' + value : value;
                 },
-
                 getRangeStartDate: function() {
 					var year = $("#yearSelect :selected").val(),
 					    month = $("#monthSelect :selected").val(),
@@ -292,7 +270,6 @@
 					var month = d.getMonth()+1;
 					return new Date(year, month, 0);
                 },
-
                 getWeekStart: function(d) {
                     d = new Date(d);
                     var day = d.getDay(),
@@ -307,7 +284,6 @@
 					tmpRowDelim = String.fromCharCode(0), // Null character
 					colDelim = '","',
 					rowDelim = '"\r\n"',
-
 					csv = '"' + $rows.map(function (i, row) {
 							var $row = $(row),
 							$cols = $row.find('th, td');
@@ -332,7 +308,6 @@
 						'target' : '_blank'
 					});
 				},    
-
                 createView: function() {
 					$('output').remove();
                     $('.app').show();
@@ -354,7 +329,6 @@
                         $('.output').empty();
                         $('.comma').closest('.checkbox-inline').show();
                         $('.export').show();
-
                         var usersByTeam = {},
                             dates = [],
                             datesForView = [],
@@ -362,7 +336,6 @@
                             users = [],
                             teamslength = 0,
                             teamName = [];
-
                         records.sort(function(a, b) { return a.DateVal - b.DateVal; });
                         
                         var date = this.getMonthStartDate(),
@@ -373,7 +346,6 @@
                             daysOfWeek.push(date.getDay());
                             date = date.addDays(1);
                         }
-
                         records.forEach(function(r) {
                             if (!usersByTeam[r.Team]) {
                                 usersByTeam[r.Team] = {};
@@ -393,9 +365,7 @@
                             }
                             usersByTeam[r.Team][r.ShortDate][us].push(r.Hours);
                         });
-
                         teamName.sort();
-
                         var table,
                             tr,
                             monthUsers = [],
@@ -413,7 +383,6 @@
                             table = $('<table>', { 'class': 'table  table-hover' });
                             tr = $('<tr class="info">');
                             tr.append('<th>' + teamName[teams] + '</th>');
-
                             for (i = 0; i <= dates.length; i++) {
                                 if(i < dates.length){
                                     if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
@@ -434,7 +403,6 @@
                                 return false;
                             });
                             monthUsers.sort();
-
                             for (j = 0; j < monthUsers.length; j++) {
                                 monthHours = 0;  //total
                                 user = monthUsers[j];
@@ -458,15 +426,12 @@
                         }
                     }
                 },
-
                 useComma: true,
-
                 hoursToString: function(hours) {
                     return this.useComma
                             ? hours ? this.round(hours).toString().replace('.', ',') : ''
                             : this.round(hours) || '';
                 },
-
                 round: function(value) {
                     return Number(Math.round(value + 'e' + 2) + 'e-' + 2);
                 },
@@ -482,14 +447,12 @@
                     });
                        
                 },
-
                 run: function(usersArray, that) {
 					if(!!usersArray) {
                         var self = that;
                     } else {
                         var self = this;     
                     }
-
                     this.useComma = $('.comma').prop('checked');
                     
                     Rally.onReady(function () {
@@ -508,7 +471,7 @@
                         }
                     });
                 },
-
+                
                 getUsers: function(callback) {
 					var that = this;	
                     Rally.onReady(function() {
@@ -542,7 +505,6 @@
                     });
                 }				
             };
-
         $(document).ready(function () {
             $('.comma').closest('.checkbox-inline').hide();
 			$('.export').hide();

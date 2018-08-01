@@ -660,7 +660,7 @@
                                 $('.app').hide();
                                 self.fetchAllProjectsAndCreateView(Rally.environment.getContext().getUser().UserName, projects, [], split, merge, splitMeetings);
                             }
-                        };
+                        };  
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
                         if (stored) {
                             loadAll(JSON.parse(stored));
@@ -746,7 +746,83 @@
                 },
 
 				getUsers: function(callback) {
-					var that = this;	
+                    var that = this;	
+                    var userFilter = Rally.data.wsapi.Filter.or([
+   //{property: 'UserName', operator: '=', value: 'alexey.guzenko@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'anton.drozdov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'vladislav.melekhov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'dmitriy.schepetkov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'yuri.panfilov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexander.kondratenko@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'iurii.baikov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'denis.fominykh@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'elizaveta.pushkar@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'igor.ryabkov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'ruslan.maksimchuk@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'evgeniy.kozlov@arcadia.spb.ru'},   
+   //{property: 'UserName', operator: '=', value: 'dmitriy.volkov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'antonina.dudka@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'boris.ruban@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'dmitriy.suzdorf@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'stanislav.gants@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'evgeniy.petukhov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexander.kobelev@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexander.usanov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'anton.ivanovv@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'dmitriy.shelemov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'vladislav.pushkin@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'zoya.samigulova@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexander.nasyrov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'dmitriy.kasymov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'nikita.kholodilov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'olga.kuzmina@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'pavel.seleznev@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'renat.zamaletdinov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'armine.avagyan@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'denis.raskin@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'dmitriy.korotaev@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'elena.milukova@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'pavel.iankin@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'georgiy.chernov@btl.com'},
+   //{property: 'UserName', operator: '=', value: 'alexander.solodov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'vasiliy.orekhov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'elena.gomina@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'vera.levchenko@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'stanislav.nadtochiy@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexey.baryshok@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexey.volgin@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'julia.balashova@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'sergey.lokshin@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'vladislav.ivanov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'artyom.belikin@arcadia.spb.ru'},
+   {property: 'UserName', operator: '=', value: 'dmitriy.shiryaev@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'gregory.bessonov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'natalia.kostyanetskaya@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'olga.rakhimkulova@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'valentin.zolotnikov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexey.kharitonov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'anna.sokolova@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'dmitriy.burets@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'gleb.syrtsev@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'konstantin.poklonskiy@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'maria.osminkina@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'andrey.sonets@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'anton.burdyugov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'elena.zotova@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'maria.krol@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'nikita.gusev@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'vladimir.rabotkin@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'alexander.nedelko@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'evgeniy.savitskiy@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'yuriy.baryshkov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'maria.vasilieva@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'nail.murtazin@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'nikolay.malikov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'ratmir.kremcheev@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'dmitry.drozdov@arcadia.spb.ru'},
+   //{property: 'UserName', operator: '=', value: 'vitaliy.tyushin@arcadia.spb.ru'},
+   {property: 'UserName', operator: '=', value: 'artem.zyryanov@arcadia.spb.ru'},
+]);	
                     Rally.onReady(function() {
                         Ext.create('Rally.data.wsapi.Store', {
                             model: 'user',
@@ -765,7 +841,8 @@
                                 scope: this
                             },
                             fetch: ['UserName', 'TeamMemberships', 'Department', 'DisplayName', 'Role', 'ShortDisplayName', 'FirstName', 'LastName'],
-                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' }],
+                            filters: [{ property: 'Department', operator: '=', value: 'Arcadia' },
+								userFilter],
                             context: {
                                 projectScopeDown: true,
                                 projectScopeUp: false

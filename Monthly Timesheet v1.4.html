@@ -573,6 +573,7 @@
                 fetchAllData: function(user, records) {
                     var self = this;
                     self.fetchDataFromRally(user, function(records) {
+                        console.log(records);
                         for(var i = 0; i < records.length; i++) {
 							resultArray = resultArray.concat(records[i]);
 						}
