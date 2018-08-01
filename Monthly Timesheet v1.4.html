@@ -99,7 +99,7 @@
                                     orderBy: 'WeekStartDate',
                                     context: {
                                         projectScopeDown: true,
-                                        projectScopeUp: false
+                                        projectScopeUp: true
                                     },
                                     pageSize: 200
                                 });
@@ -141,7 +141,12 @@
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                                resolve(values);
+                                                if (values !== null) {
+                                                    resolve(values);
+                                                } else { 
+                                                    values = [];
+                                                    resolve(values);
+                                                }
                                             },
                                             scope: this
                                         },
@@ -176,7 +181,7 @@
                                         filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
                                         context: {
                                             projectScopeDown: true,
-                                            projectScopeUp: false
+                                            projectScopeUp: true
                                         },
                                         pageSize: 200
                                     });
@@ -573,7 +578,6 @@
                 fetchAllData: function(user, records) {
                     var self = this;
                     self.fetchDataFromRally(user, function(records) {
-                        console.log(records);
                         for(var i = 0; i < records.length; i++) {
 							resultArray = resultArray.concat(records[i]);
 						}
@@ -593,17 +597,19 @@
                     
                     Rally.onReady(function () {
                         var loadAll = function(projects) {
-                            if(!!usersArray) {
-                                $('.app').hide();
-                                usersArray.forEach(function(user) {
-                                    self.fetchAllData(user, []);
-                                });   
-                                var intervalID = setInterval(function () {
-                                    if (numUsersFetchedData == usersArray.length) {
-                                        clearInterval(intervalID);
-                                        self.createViewResults(resultArray);
-                                    }
-                                }, 500 );
+                            if (projects.length) {
+                                if(!!usersArray) {
+                                    $('.app').hide();
+                                    usersArray.forEach(function(user) {
+                                        self.fetchAllData(user, []);
+                                    });   
+                                    var intervalID = setInterval(function () {
+                                        if (numUsersFetchedData == usersArray.length) {
+                                            clearInterval(intervalID);
+                                            self.createViewResults(resultArray);
+                                        }
+                                    }, 500 );
+                                }
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
