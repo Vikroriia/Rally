@@ -92,7 +92,8 @@
                                         projectScopeDown: true,
                                         projectScopeUp: true
                                     },
-                                    pageSize: 200
+                                    pageSize: 200,
+                            limit: Infinity
                                 });
                             },
                             _onItemsLoaded: function(store, data) {
@@ -137,7 +138,8 @@
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
-                                        pageSize: 200
+                                        pageSize: 200,
+                            limit: Infinity
                                     });
                                 };
                             },
@@ -163,7 +165,8 @@
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
-                                        pageSize: 200
+                                        pageSize: 200,
+                            limit: Infinity
                                     });
                                 };
                             },
@@ -189,7 +192,8 @@
                                             projectScopeDown: true,
                                             projectScopeUp: true
                                         },
-                                        pageSize: 200
+                                        pageSize: 200,
+                            limit: Infinity
                                     });
                                 } else {
                                     return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
@@ -219,7 +223,8 @@
                                         projectScopeDown: true,
                                         projectScopeUp: true
                                     },
-                                    pageSize: 200
+                                    pageSize: 200,
+                            limit: Infinity
                                 });
                             },
                             _onItemValueLoaded: function(entries) {
@@ -505,7 +510,8 @@
                                 projectScopeDown: true,
                                 projectScopeUp: false
                             },
-                            pageSize: 100
+                            pageSize: 100,
+                            limit: Infinity
                         });
                     });
                 }				

@@ -102,8 +102,7 @@
                                         projectScopeDown: false,
                                         projectScopeUp: false
                                     },
-                                    pageSize: 500,
-                            limit: Infinity
+                                    pageSize: 500
                                 });
                             },
 
@@ -152,8 +151,7 @@
                                             projectScopeDown: false,
                                             projectScopeUp: false
                                         },
-                                        pageSize: 500,
-                            limit: Infinity
+                                        pageSize: 500
                                     });
                                 };
                             },
@@ -165,12 +163,7 @@
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                                if (values !== null) {
-                                                    resolve(values);
-                                                } else { 
-                                                    values = [];
-                                                    resolve(values);
-                                                }
+                                                resolve(values);
                                             },
                                             scope: this
                                         },
@@ -181,8 +174,7 @@
                                             projectScopeDown: false,
                                             projectScopeUp: false
                                         },
-                                        pageSize: 500,
-                            limit: Infinity
+                                        pageSize: 500
                                     });
                                 };
                             },
@@ -217,8 +209,7 @@
                                             projectScopeDown: false,
                                             projectScopeUp: false
                                         },
-                                        pageSize: 500,
-                            limit: Infinity
+                                        pageSize: 500
                                     });
                                 } else {
                                     return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
@@ -249,8 +240,7 @@
                                         projectScopeDown: false,
                                         projectScopeUp: false
                                     },
-                                    pageSize: 500,
-                            limit: Infinity
+                                    pageSize: 500
                                 });
                             },
 
@@ -694,8 +684,7 @@
                                 projectScopeDown: true,
                                 projectScopeUp: false
                             },
-                            pageSize: 500,
-                            limit: Infinity
+                            pageSize: 500
                         });
                     });
                 },
@@ -751,8 +740,7 @@
                                 projectScopeDown: true,
                                 projectScopeUp: false
                             },
-                            pageSize: 500,
-                            limit: Infinity
+                            pageSize: 500
                         });
                     });
                 },
@@ -859,8 +847,7 @@
                                 projectScopeDown: true,
                                 projectScopeUp: false
                             },
-                            pageSize: 100,
-                            limit: Infinity
+                            pageSize: 100
                         });
                     });
                 },
