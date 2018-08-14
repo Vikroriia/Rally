@@ -63,6 +63,7 @@
 		
 		var resultsArray = [],
 			usersByFeature ={},
+            projects = [],
 			numUsersFetchedData = 0;
 
         var Rally = Rally,
@@ -710,7 +711,7 @@
                         if (stored) {
                             loadAll(JSON.parse(stored));
                         }
-                        Ext.create('Rally.data.wsapi.Store', {
+                        /* Ext.create('Rally.data.wsapi.Store', {
                             model: 'project',
                             autoLoad: true,
                             listeners: {
@@ -729,7 +730,7 @@
                                 projectScopeUp: false
                             },
                             pageSize: 200
-                        });
+                        }); */
                     });
                 },
 
