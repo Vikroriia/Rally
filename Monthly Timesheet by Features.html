@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Monthly Features Timesheet V1.3</title>
+    <title>Features Timesheet</title>
     <style>
         th {
             text-align: left;
@@ -79,10 +79,8 @@
                             },
 
                             launch: function() {
-                                console.log('launch');
                                 Ext.create('Rally.data.wsapi.Store', {
                                     model: 'timeentryitem',
-                                    callbackKey: 'callback',
                                     autoLoad: true,
                                     listeners: { load: this._onItemsLoaded, scope: this },
                                     fetch: ['TaskDisplayString', 'ProjectDisplayString', 'WorkProductDisplayString', 'WeekStartDate', 'Values', 'Task', 'WorkProduct', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
@@ -104,58 +102,45 @@
                                         projectScopeDown: true,
                                         projectScopeUp: false
                                     },
-                                    pageSize: 500/* ,
-                                    limit: Infinity */
+                                    pageSize: 200
                                 });
                             },
 
                             _onItemsLoaded: function(store, data) {
-                                console.log('_onItemsLoaded');
                                 var d = self.getMonthEndDate(self.getMonthStartDate());
                                 data = data.map(function(v) { return v.data; }).filter(function(e) {
                                     return e.WeekStartDate < d && !!e.WorkProduct;
                                 });
-
                                 var that = this;
-
-                                $.when.apply($, data.filter(function(entry) {								
-									return entry.WorkProduct._type === 'Defect';									
+                                $.when.apply($, data.filter(function(entry) {			
+                                    return entry.WorkProduct._type === 'Defect';									
                                 }).map(function(entry) {
                                     return this.fetch(this._loadFeaturesForDefectsPromise(entry)).then(function(values) {
-                                            //console.log(values.length);
                                         if (values.length) {
-                                            //console.log(values[0].data);
                                             var story = values[0].data;
                                             entry.WorkProduct.Feature = story.Feature;
                                             entry.WorkProductDisplayString = entry.WorkProduct.Feature
-                                                                                ? entry.WorkProductDisplayString
-                                                                                : story.FormattedID + ': ' + story.Name;
+                                                                                 ? entry.WorkProductDisplayString
+                                                                                 : story.FormattedID + ': ' + story.Name;
                                         }
                                     });
                                 }, this)).then(function(parameters) {
                                     return $.when.apply($, data.map(function(entry) {
                                         return that.fetch(that._loadValuesPromise(entry)).then(function (values) {
-                                            entry.Values = values.map(function (v) { 
-                                                //console.log('DateVal:'+ v.data.DateVal+', Hours:'+ v.data.Hours);
-                                                return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
+                                            entry.Values = values.map(function (v) { return { DateVal: v.data.DateVal, Hours: v.data.Hours }; });
                                         });
                                     }, that));
                                 }).then(this._onItemValueLoaded.bind(this, data));
                             },
 
                             _loadFeaturesForDefectsPromise: function (entry) {
-                                console.log('_loadFeaturesForDefectsPromise');
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
                                         model: 'hierarchicalrequirement',
-                                    callbackKey: 'callback',
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                                if (values === null) {
-                                                    values = [];
-                                                    resolve(values);
-                                                } else resolve(values);
+                                               resolve(values);
                                             },
                                             scope: this
                                         },
@@ -164,27 +149,21 @@
                                         context: {
                                             project: '/project/' + project,
                                             projectScopeDown: true,
-                                            projectScopeUp: false
+                                            projectScopeUp: true
                                         },
-                                        pageSize: 500/* ,
-                                        limit: Infinity */
+                                        pageSize: 200
                                     });
                                 };
                             },
 
                             _loadValuesPromise: function (entry) {
-                                console.log('_loadValuesPromise');
                                 return function(resolve, reject) {
                                     Ext.create('Rally.data.wsapi.Store', {
                                         model: 'timeentryvalue',
-                                    callbackKey: 'callback',
                                         autoLoad: true,
                                         listeners: {
                                             load: function (store, values) {
-                                                if (values === null) {
-                                                    values = [];
-                                                    resolve(values);
-                                                } else resolve(values);
+                                                resolve(values);
                                             },
                                             scope: this
                                         },
@@ -195,14 +174,12 @@
                                             projectScopeDown: true,
                                             projectScopeUp: false
                                         },
-                                        pageSize: 500/* ,
-                                        limit: Infinity */
+                                        pageSize: 200
                                     });
                                 };
                             },
 
                             _loadFeaturesForDefects: function(timeEntries, index, callback) {
-                                console.log('_loadFeaturesForDefects');
                                 index = index || 0;
                                 if (timeEntries.length <= index) {
                                     return callback(timeEntries);
@@ -211,7 +188,6 @@
                                 if (entry.WorkProduct._type === 'Defect') {
                                     Ext.create('Rally.data.wsapi.Store', {
                                         model: 'hierarchicalrequirement',
-                                    callbackKey: 'callback',
                                         autoLoad: true,
                                         listeners: {
                                             load: function(store, values) {
@@ -231,10 +207,9 @@
                                         context: {
                                             project: '/project/' + project,
                                             projectScopeDown: true,
-                                            projectScopeUp: false
+                                            projectScopeUp: true
                                         },
-                                        pageSize: 500/* ,
-                                        limit: Infinity */
+                                        pageSize: 200
                                     });
                                 } else {
                                     return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
@@ -242,7 +217,6 @@
                             },
 
                             _loadValues: function(timeEntries, index) {
-                                console.log('_loadValues');
                                 index = index || 0;
                                 if (timeEntries.length <= index) {
                                     return this._onItemValueLoaded(timeEntries);
@@ -251,7 +225,6 @@
 
                                 Ext.create('Rally.data.wsapi.Store', {
                                     model: 'timeentryvalue',
-                                    callbackKey: 'callback',
                                     autoLoad: true,
                                     listeners: {
                                         load: function(store, values) {
@@ -265,15 +238,13 @@
                                     context: {
                                         project: '/project/' + project,
                                         projectScopeDown: true,
-                                        projectScopeUp: false
+                                        projectScopeUp: true
                                     },
-                                    pageSize: 500/* ,
-                                    limit: Infinity */
+                                    pageSize: 200
                                 });
                             },
 
                             _onItemValueLoaded: function(entries) {
-                                console.log('_onItemValueLoaded');
                                 var getStoryOrFeature = function(item) {
 									return item.WorkProduct.Feature
 											? item.WorkProduct.Feature.FormattedID + ": " + item.WorkProduct.Feature._refObjectName
@@ -475,14 +446,12 @@
 				},
 				
                 createView: function() {
-                    console.log('createView');
 					$('output').remove();
                     $('.app').show();
                     $('.output').empty();
                 },
 				
 				createViewResults: function(records) {
-                    console.log('createViewResults');
 				if(!!records){
 					this._lastRecords = records;
 					$('output').remove();
@@ -515,14 +484,9 @@
 						if (!storeByDate[r.ShortDate]) {
 							storeByDate[r.ShortDate] = {};
 						}
-						var feat = r.meetings
-                                       ? r.Feature + ': ' + r.meetings.map(function(rec) {
-												 return rec.Task;
-											 }).filter(function(subj) {
-												 subj = subj.toLowerCase();
-												 return uniq.hasOwnProperty(subj) ? false : uniq[subj] = true;
-											 }).join(', ')
-									   : r.Feature;
+						var uniq = {},
+							feat = r.Feature;
+                                      
 						feat = uniqFeature[feat.toLowerCase()] ? uniqFeature[feat.toLowerCase()] : uniqFeature[feat.toLowerCase()] = feat;
 						if (!features[feat]) {
 							features[feat] = true;
@@ -625,20 +589,16 @@
                 },
 
                 addRecords: function(results, records, team, user) {
-                    console.log('addRecords');
                     records.map(function(r) {
                         r.team = team;
 						r.user = user;
                         return r;
                     }).forEach(function(r) {
-                        console.log(r);
                         results.push(r);
                     });
                 },
 
                 fetchAllProjectsAndCreateView: function (user, projects, results) {
-                    console.log('fetchAllProjectsAndCreateView');
-                    //console.log(projects);
                     if (!projects.length) {
                         return null;
                     }
@@ -661,14 +621,12 @@
                 },
 				
 				fetchAllData: function (user, projects, results) {
-                    console.log('fetchAllData');
                     if (!projects.length) {
                         return null;
                     }	
                     var self = this;
                     $.when.apply($, projects.map(function (project) {
 						var d = $.Deferred();
-                                console.log(projects.length);
                         this.fetchDataFromRally(user, project.id, function(records) {
                             self.addRecords(results, records, project.name, user);
                             d.resolve();
@@ -684,14 +642,12 @@
                 },
 
                 run: function() {
-                    console.log('run');
                     var self = this;
                     this.useComma = $('.comma').prop('checked');
                     
                     Rally.onReady(function () {
                         var loadAll = function (projects) {
                             if (projects.length) {
-                                console.log(projects.length);
                                 $('.app').hide();
                                 self.fetchAllProjectsAndCreateView(Rally.environment.getContext().getUser().UserName, projects, []);
                             }
@@ -702,13 +658,11 @@
                         }
                         Ext.create('Rally.data.wsapi.Store', {
                             model: 'project',
-                            callbackKey: 'callback',
                             autoLoad: true,
                             listeners: {
-                                load: function(x, projects) {
+                                load: function (x, projects) {
 									
                                     projects = projects.map(function(p) {
-                                        console.log(p);
                                         return { id: p.data.ObjectID, name: p.data.Name };
                                     });
                                     localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
@@ -721,14 +675,12 @@
                                 projectScopeDown: true,
                                 projectScopeUp: false
                             },
-                            pageSize: 500/* ,
-                            limit: Infinity */
+                            pageSize: 200
                         });
                     });
                 },
 
 				runAll: function(usersArray, that) {
-                    console.log('runAll');
                     var self = that;
 						
 					self.log('Loading time entries... <b id="progress"></b>');
@@ -738,14 +690,14 @@
 						
                     this.useComma = $('.comma').prop('checked');
                     
-                    Rally.onReady(function() {
-                        var loadAll = function(projects) {
+                    Rally.onReady(function () {
+                        var loadAll = function (projects) {
                             if (projects.length) {
                                 $('.app').hide();
 								usersArray.forEach(function(user){
 									self.fetchAllData(user, projects, []);
 								});
-								var intervalID = setInterval(function() {
+								var intervalID = setInterval(function () {
 									if (numUsersFetchedData == usersArray.length) {
 										clearInterval(intervalID);
 										self.createViewResults(resultsArray);
@@ -760,11 +712,10 @@
                         }
                         Ext.create('Rally.data.wsapi.Store', {
                             model: 'project',
-                                    callbackKey: 'callback',
                             autoLoad: true,
                             listeners: {
-                                load: function(x, projects) {
-                                        projects = projects.map(function(p) {
+                                load: function (x, projects) {
+                                    projects = projects.map(function(p) {
                                         return { id: p.data.ObjectID, name: p.data.Name };
                                     });
                                     localStorage.setItem('rallyProjectsRaw', JSON.stringify(projects));
@@ -777,8 +728,7 @@
                                 projectScopeDown: true,
                                 projectScopeUp: false
                             },
-                            pageSize: 500/* ,
-                            limit: Infinity */
+                            pageSize: 200
                         });
                     });
                 },
@@ -788,7 +738,6 @@
                     Rally.onReady(function() {
                         Ext.create('Rally.data.wsapi.Store', {
                             model: 'user',
-                            callbackKey: 'callback',
                             autoLoad: true,
                             listeners: {
                                 load: function (x, users) {
@@ -809,15 +758,15 @@
                                 projectScopeDown: true,
                                 projectScopeUp: false
                             },
-                            pageSize: 100/* ,
-                            limit: Infinity */
+                            pageSize: 200
                         });
                     });
                 }
             };
 
         $(document).ready(function () {
-            $('.comma').closest('.checkbox-inline').hide();
+			
+			$('.comma').closest('.checkbox-inline').hide();
 			$('.export').hide();
             
             $(document)

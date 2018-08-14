@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Personal Timesheet 3.5</title>
+    <title>Users Timesheet</title>
     <style>
         th {
             text-align: left;
@@ -509,7 +509,7 @@
                         var loadAll = function (projects) {
                             if (projects.length) {
                                 $('.app').hide();
-                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], activeUsersOnly/* , splitMeetings */);
+                                self.fetchAllProjectsAndCreateView(user || Rally.environment.getContext().getUser().UserName, self.dateStr, projects, [], activeUsersOnly);
                             }
                         };
                         var stored = localStorage.getItem('rallyProjectsRaw') || false;
@@ -537,15 +537,6 @@
                             pageSize: 200
                         });
                     });
-                },
-
-                runSingle: function () {
-                    this.dateStr = $('.date').val();
-                    $('.app').hide();                        
-                    
-                    this.fetchDataFromRally(Rally.environment.getContext().getUser().UserName, this.dateStr, function (records, activeUsersOnly) {
-                         this.createView(records, activeUsersOnly); 
-                    }.bind(this));
                 },
 
 				getUsers: function() {

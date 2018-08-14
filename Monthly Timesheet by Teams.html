@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Teams Timesheet</title>
+    <style>
+        th {
+            text-align: left;
+            font-weight: normal;
+        }
+        th:first-child {
+            width: 600px;
+        }
+        thead th
+        {
+            font-weight: bold;
+        }
+        tr.info:hover {
+            background-color:  #aedcf4;
+        }
+        .settings {
+            text-align: center;
+        }
+		.checkbox-inline, .radio-inline {
+			font-size: 9pt;
+			padding-left: 10px;
+			padding-right: 9px;
+		}
+        .output, body {
+            overflow: auto !important;
+        }
+        output {
+            width: auto;
+            overflow: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+		.beige  {
+			background-color: #F5F5DC;
+		}
+		.weekends  {
+			background-color: #FAF2F0;
+		}
+	</style>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0/sdk.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+    <script type="text/javascript">
+        Date.prototype.addDays = function (days) {
+            var dat = new Date(this.valueOf());
+            dat.setDate(dat.getDate() + days);
+            return dat;
+        };
+        
+        var resultArray = [],
+            numUsersFetchedData = 0;
+		var Rally = Rally,
+			Ext = Ext,
+			app = {
+                fetchDataFromRally: function(user, callback) {
+                    var self = this;
+                    Rally.onReady(function() {
+                        var app = {
+                            fetch: function(load) {
+                                var d = $.Deferred();
+                                load(d.resolve.bind(d), d.reject.bind(d));
+                                return d.promise();
+                            },
+                            launch: function() {
+                                Ext.create('Rally.data.wsapi.Store', {
+                                    model: 'timeentryitem',
+                                    autoLoad: true,
+                                    listeners: { load: this._onItemsLoaded, scope: this },
+                                    fetch: ['User', 'UserName', 'FirstName', 'LastName', 'DisplayName', 'Department', 'ShortDisplayName', 'Project', '_refObjectName', 'WeekStartDate', 'Values', 'WorkProduct', 'WorkProductDisplayString', '_ref', 'Feature', 'FeatureDisplayString', 'FormattedID'],
+                                    filters: [
+                                        {
+                                            property: 'WeekStartDate',
+                                            operator: '>=',
+                                            value: self.getRangeStartDate()
+                                        },
+                                        {
+                                            property: 'User',
+                                            operator: '=',
+                                            value: user
+                                        }
+                                    ],
+                                    orderBy: 'WeekStartDate',
+                                    context: {
+                                        projectScopeDown: true,
+                                        projectScopeUp: false
+                                    },
+                                    pageSize: 200,
+                                    limit: Infinity
+                                });
+                            },
+                            _onItemsLoaded: function(store, data) {
+                                var d = self.getMonthEndDate(self.getMonthStartDate());
+                                data = data.map(function(v) { return v.data; }).filter(function(e) {
+                                    return e.WeekStartDate < d && !!e.WorkProduct;
+                                });
+                                var that = this;
+                                $.when.apply($, data.filter(function(entry) {		
+                                    return entry.WorkProduct._type === 'Defect';									
+                                }).map(function(entry) {
+                                    return this.fetch(this._loadFeaturesForDefectsPromise(entry));
+                                }, this)).then(function(parameters) {
+                                    return $.when.apply($, data.map(function(entry) { 
+                                        return that.fetch(that._loadValuesPromise(entry)).then(function (values) {
+                                            entry.Values = values.map(function (v) { 
+                                                return { DateVal: v.data.DateVal, Hours: v.data.Hours }; 
+                                            });
+                                        });
+                                    }, that));
+                                }).then(this._onItemValueLoaded.bind(this, data));
+                            },
+                            _loadFeaturesForDefectsPromise: function (entry) {
+                                return function(resolve, reject) {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'hierarchicalrequirement',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function (store, values) {
+                                                resolve(values);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['Feature', 'FormattedID', 'Name'],
+                                        filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
+                                        context: {
+                                            projectScopeDown: true,
+                                            projectScopeUp: true
+                                        },
+                                        pageSize: 200,
+                                        limit: Infinity
+                                    });
+                                };
+                            },
+                            _loadValuesPromise: function (entry) {
+                                return function(resolve, reject) {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'timeentryvalue',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function (store, values) {
+                                                resolve(values);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['DateVal', 'Hours'],
+                                        filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
+                                        context: {
+                                            projectScopeDown: true,
+                                            projectScopeUp: true
+                                        },
+                                        pageSize: 200,
+                                        limit: Infinity
+                                    });
+                                };
+                            },
+                            _loadFeaturesForDefects: function(timeEntries, index, callback) {
+                                index = index || 0;
+                                if (timeEntries.length <= index) {
+                                    return callback(timeEntries);
+                                }
+                                var entry = timeEntries[index];
+                                if (entry.WorkProduct._type === 'Defect') {
+                                    Ext.create('Rally.data.wsapi.Store', {
+                                        model: 'hierarchicalrequirement',
+                                        autoLoad: true,
+                                        listeners: {
+                                            load: function() {
+                                                return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
+                                            },
+                                            scope: this
+                                        },
+                                        fetch: ['Feature', 'FormattedID', 'Name'],
+                                        filters: [{ property: 'Defects', operator: 'contains', value: entry.WorkProduct._ref }],
+                                        context: {
+                                            projectScopeDown: true,
+                                            projectScopeUp: true
+                                        },
+                                        pageSize: 200,
+                                        limit: Infinity
+                                    });
+                                } else {
+                                    return timeEntries.length - 1 > index ? this._loadFeaturesForDefects(timeEntries, ++index, callback) : callback(timeEntries);
+                                }
+                            },
+                            _loadValues: function(timeEntries, index) {
+                                index = index || 0;
+                                if (timeEntries.length <= index) {
+                                    return this._onItemValueLoaded(timeEntries);
+                                }
+                                var entry = timeEntries[index];
+                                Ext.create('Rally.data.wsapi.Store', {
+                                    model: 'timeentryvalue',
+                                    autoLoad: true,
+                                    listeners: {
+                                        load: function(store, values) {
+                                            entry.Values = values.map(function(v) { 
+                                                return { DateVal: v.data.DateVal, Hours: v.data.Hours }; 
+                                            });
+                                            return timeEntries.length - 1 > index ? this._loadValues(timeEntries, ++index) : this._onItemValueLoaded(timeEntries);
+                                        },
+                                        scope: this
+                                    },
+                                    fetch: ['DateVal', 'Hours'],
+                                    filters: [{ property: 'TimeEntryItem', operator: '=', value: entry._ref }],
+                                    context: {
+                                        projectScopeDown: true,
+                                        projectScopeUp: true
+                                    },
+                                    pageSize: 200,
+                                    limit: Infinity
+                                });
+                            },
+                            _onItemValueLoaded: function(entries) {
+                                var records = [];
+                                entries.forEach(function(entry) {
+                                    
+                                    entry.Values.forEach(function(value) {
+                                        records.push({
+                                            User: entry.User,
+                                            Team: entry.Project._refObjectName,
+                                            ShortDate: self.formatDate(value.DateVal),
+                                            Hours: value.Hours
+                                        });
+                                    });
+                                }, this);
+                                return callback(records);
+                            }     
+                        };
+                        app.launch();
+                    });
+                },
+                sumHours: function(hours) {
+                    hours = hours || [];
+                    return hours.reduce(function(prev, current) {
+                        return prev + Number(current);
+                    }, 0);
+                },
+                formatDate: function(d) {
+                    return this.addZero(d.getDate()) + "." + this.addZero(d.getMonth() + 1) + "." + d.getFullYear();
+                },
+                parseDate: function(d) {
+                    d = d.split('.');
+                    return new Date(Number(d[2]), Number(d[1] - 1), d[0]);
+                },
+                addZero: function(value) {
+                    return value <= 9 ? '0' + value : value;
+                },
+                getRangeStartDate: function() {
+					var year = $("#yearSelect :selected").val(),
+					    month = $("#monthSelect :selected").val(),
+                        date = new Date(year, month, 1);
+                    return this.getWeekStart(new Date(date.getFullYear(), date.getMonth(), 1)).addDays(-1);
+                },
+				
+				getMonthStartDate: function() {
+					var year = $("#yearSelect :selected").val(),
+                        month = $("#monthSelect :selected").val();
+                    return new Date(year, month, 1);
+                },
+				
+				getMonthEndDate: function(d) {
+					var year = d.getFullYear();
+					var month = d.getMonth()+1;
+					return new Date(year, month, 0);
+                },
+                getWeekStart: function(d) {
+                    d = new Date(d);
+                    var day = d.getDay(),
+                        diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                    return new Date(d.setDate(diff));
+                },  
+				
+				exportTableToCSV: function ($table, filename) {
+					var $rows = $table.find('tr');
+					
+					tmpColDelim = String.fromCharCode(11), // Vertical tab character
+					tmpRowDelim = String.fromCharCode(0), // Null character
+					colDelim = '","',
+					rowDelim = '"\r\n"',
+					csv = '"' + $rows.map(function (i, row) {
+							var $row = $(row),
+							$cols = $row.find('th, td');
+							return $cols.map(function (j, col) {
+								var $col = $(col),
+									text = $col.text();
+								if ($col.is("th")) {
+									return text.replace( /,/g, '' );
+								}
+								return text;
+							}).get().join(tmpColDelim);
+						}).get().join(tmpRowDelim)
+						.split(tmpRowDelim).join(rowDelim)
+						.split(tmpColDelim).join(colDelim) + '"',
+						
+					csvData = 'data:application/csv;charset=utf-8,' + encodeURIComponent(csv);
+					
+					$(this)
+						.attr({
+						'download' : filename,
+						'href' : csvData,
+						'target' : '_blank'
+					});
+				},    
+                createView: function() {
+					$('output').remove();
+                    $('.app').show();
+                    $('.output').empty();
+                },
+				
+				getWeekStart: function(d) {
+                    d = new Date(d);
+                    var day = d.getDay(),
+                        diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                    return new Date(d.setDate(diff));
+                },  
+				
+				createViewResults: function(records) {
+                    if(!!records){
+                        this._lastRecords = records;
+                        $('output').remove();
+                        $('.app').show();
+                        $('.output').empty();
+                        $('.comma').closest('.checkbox-inline').show();
+                        $('.export').show();
+                        var usersByTeam = {},
+                            dates = [],
+                            datesForView = [],
+                            daysOfWeek =[],
+                            users = [],
+                            teamslength = 0,
+                            teamName = [];
+                        records.sort(function(a, b) { return a.DateVal - b.DateVal; });
+                        
+                        var date = this.getMonthStartDate(),
+                            endDate = this.getMonthEndDate(date);
+                        while (date <= endDate) {
+                            dates.push(this.formatDate(date));
+                            datesForView.push(date.getDate());
+                            daysOfWeek.push(date.getDay());
+                            date = date.addDays(1);
+                        }
+                        records.forEach(function(r) {
+                            if (!usersByTeam[r.Team]) {
+                                usersByTeam[r.Team] = {};
+                                teamslength++;
+                                teamName.push(r.Team);
+						    }
+                            if (!usersByTeam[r.Team][r.ShortDate]) {
+							    usersByTeam[r.Team][r.ShortDate] = {};
+						    }
+                            var us = r.User.LastName ? r.User.FirstName + ' ' + r.User.LastName : r.User.DisplayName || r.User.UserName;
+                            if (!users[us]) {
+                                users[us] = true;
+							    users.push(us);
+                            }
+                            if (!usersByTeam[r.Team][r.ShortDate][us]) {
+                                usersByTeam[r.Team][r.ShortDate][us] = [];
+                            }
+                            usersByTeam[r.Team][r.ShortDate][us].push(r.Hours);
+                        });
+                        teamName.sort();
+                        var table,
+                            tr,
+                            monthUsers = [],
+                            user,
+                            i,
+                            j,
+                            teams = 0,
+                            hours,
+                            total,
+                            tbody,
+                            sumHours, // total
+                            monthHours;
+                            
+                        while (teams < teamslength) {
+                            table = $('<table>', { 'class': 'table  table-hover' });
+                            tr = $('<tr class="info">');
+                            tr.append('<th>' + teamName[teams] + '</th>');
+                            for (i = 0; i <= dates.length; i++) {
+                                if(i < dates.length){
+                                    if (i < 9) tr.append('<th>' + "0" + datesForView[i] + '</th>');
+                                    else tr.append('<th>' + datesForView[i] + '</th>');
+                                }
+                                else tr.append('<th>' + "Total" + '</th>'); //total
+                            }
+                            
+                            table.append($('<thead>').html(tr));
+                            table.append(tbody = $('<tbody>'));
+                                
+                            monthUsers = users.filter(function(u) {
+                                for (i = 0; i < dates.length; i++) {
+                                    if (usersByTeam[teamName[teams]][dates[i]] && usersByTeam[teamName[teams]][dates[i]][u]) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            });
+                            monthUsers.sort();
+                            for (j = 0; j < monthUsers.length; j++) {
+                                monthHours = 0;  //total
+                                user = monthUsers[j];
+                                tr = $('<tr>');
+                                tr.append('<th class = featRows>' + user + '</th>');
+                                for (i = 0; i < dates.length; i++) {
+                                    sumHours = 0;
+                                    if (usersByTeam[teamName[teams]][dates[i]]) {
+                                        hours = usersByTeam[teamName[teams]][dates[i]][user];
+                                        sumHours = this.sumHours(hours);
+                                    }
+                                    if ((daysOfWeek[i]==6) || (daysOfWeek[i]==0)) tr.append('<td class = weekends>' + this.hoursToString(sumHours) + '</td>');
+                                    else tr.append('<td>' + this.hoursToString(sumHours) + '</td>');
+                                    monthHours += sumHours; //total
+                                }
+                                tr.append('<td class= beige>' + this.hoursToString(monthHours) + '</td>'); //total
+                                tbody.append(tr);
+                            }
+                            teams++;
+                            $('.output').append(table).append('<br />');
+                        }
+                    }
+                },
+                useComma: true,
+                hoursToString: function(hours) {
+                    return this.useComma
+                            ? hours ? this.round(hours).toString().replace('.', ',') : ''
+                            : this.round(hours) || '';
+                },
+                round: function(value) {
+                    return Number(Math.round(value + 'e' + 2) + 'e-' + 2);
+                },
+                
+                fetchAllData: function(user, records) {
+                    var self = this;
+                    self.fetchDataFromRally(user, function(records) {
+                        for(var i = 0; i < records.length; i++)
+						{
+							resultArray = resultArray.concat(records[i]);
+						}
+						numUsersFetchedData++;
+                    });
+                       
+                },
+
+                run: function(usersArray, that) {
+					if(!!usersArray) {
+                        var self = that;
+                    } else {
+                        var self = this;     
+                    }
+                    this.useComma = $('.comma').prop('checked');
+                    
+                    Rally.onReady(function () {
+                        if(!!usersArray) {
+                            $('.app').hide();
+                            usersArray.forEach(function(user) {
+                                self.fetchAllData(user, []);
+                            });
+                                    
+                            var intervalID = setInterval(function () {
+                                if (numUsersFetchedData == usersArray.length) {
+                                    clearInterval(intervalID);
+                                    self.createViewResults(resultArray);
+                                }
+                            }, 500 );
+                        }
+                    });
+                },
+
+                getUsers: function(callback) {
+					var that = this;	
+                    Rally.onReady(function() {
+                        Ext.create('Rally.data.wsapi.Store', {
+                            model: 'user',
+                            autoLoad: true,
+                            listeners: {
+                                load: function (x, users) {
+									var usersArray = [];
+									users.sort(function (u, u2) {
+                                        return (u.data.LastName || u.data.UserName).localeCompare(u2.data.LastName || u2.data.UserName);
+                                    })
+									.forEach(function (u) {
+										usersArray.push(u.data.UserName); 
+                                    });
+                                    usersArray.sort();
+                                    callback(usersArray, that);								
+                                },
+                                scope: this
+                            },
+                            fetch: ['UserName', 'Department', '_refObjectUUID'],
+                            filters: [
+                                { property: 'Department', operator: '=', value: 'Arcadia' }
+                            ],
+                            context: {
+                                projectScopeDown: true,
+                                projectScopeUp: false
+                            },
+                            pageSize: 100,
+                            limit: Infinity
+                        });
+                    });
+                }				
+            };
+        $(document).ready(function () {
+            $('.comma').closest('.checkbox-inline').hide();
+			$('.export').hide();
+            
+            $(document)
+                .on('click', 'tbody tr.active', function() {
+                    var $this = $(this);
+                    $this.prop('checked') ? $this.attr('checked', 'checked') : $this.removeAttr('checked');	
+                })
+				.on('click', '.reload', function() {
+                    resultArray = [];
+                    numUsersFetchedData = 0;
+                	app.getUsers(app.run);
+                })
+                .on('click', '.export', function(event) {
+                    app.exportTableToCSV.apply(this, [$('table'), $("#monthSelect :selected").text()+'Teams.csv']);
+                })
+                .on('change', 'input[type="checkbox"]', setTimeout.bind(null, function() {
+                    app.useComma = $('.comma').prop('checked');
+					app.createViewResults(app._lastRecords);
+                }, 200))
+				.on('change', '#monthSelect', function() {
+                    resultArray = [];
+                    numUsersFetchedData = 0;
+                	app.getUsers(app.run);
+				});	
+			app.run(false, this);
+        });
+    </script>
+</head>
+<body>
+    <div class="app">
+        <div class="settings">
+            <button class="reload btn btn-sm btn-block"><i class="glyphicon glyphicon-refresh"></i> Refresh</button>
+            <br/>
+			<select id = "yearSelect" class="form-control input-sm" style="width: 200px; display: inline-block;">
+				<option value="2010" >2010</option>
+				<option value="2011" >2011</option>
+				<option value="2012" >2012</option>
+				<option value="2013" >2013</option>
+				<option value="2014" >2014</option>
+				<option value="2015" >2015</option>
+				<option value="2016" selected="selected">2016</option>
+				<option value="2017" >2017</option>
+				<option value="2018" >2018</option>
+				<option value="2019" >2019</option>
+				<option value="2020" >2020</option>
+			</select>
+			<select id = "monthSelect" class="form-control input-sm" style="width: 200px; display: inline-block;">
+				<option value="0" >January</option>
+				<option value="1" >February</option>
+				<option value="2" >March</option>
+				<option value="3" >April</option>
+				<option value="4" >May</option>
+				<option value="5" >June</option>
+				<option value="6" >July</option>
+				<option value="7" >August</option>
+				<option value="8" >September</option>
+				<option value="9" >October</option>
+				<option value="10" >November</option>
+				<option value="11" >December</option>
+            </select>
+            <label class="checkbox-inline">
+                <input type="checkbox" class="comma" value="true" checked="checked" />Use comma for decimals
+            </label>
+			<a href="#" class="export btn btn-default"><i class="glyphicon glyphicon-list"></i> Export to CSV</a>
+        </div>
+        <hr />
+        <div class="output"></div>	
+    </div>
+</body>
+</html>
